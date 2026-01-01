@@ -8,21 +8,35 @@
         body { margin: 0; background-color: #222; overflow: hidden; touch-action: none; height: 100vh; font-family: 'Courier New', monospace; }
         #gameCanvas { display: block; }
         
-        /* Menu Screens */
-        .overlay-screen {
+        /* Interactive Title Screen */
+        #welcomeScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: white; z-index: 20;
-            text-align: center; padding: 20px; box-sizing: border-box;
+            background: url('IMG_2523.png') no-repeat center center;
+            background-size: cover;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 20;
         }
         
+        /* Menu Buttons with Hover/Active Feedback */
+        .menu-btn {
+            padding: 20px 40px; margin: 15px; font-size: 22px; font-weight: bold;
+            background: rgba(255, 204, 128, 0.9); border: 4px solid #333; 
+            border-radius: 15px; color: #333; transition: all 0.1s;
+            box-shadow: 0 6px #666; cursor: pointer;
+        }
+        .menu-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px #333;
+            background: #ffa726;
+        }
+
         .ui-top {
             position: absolute; top: 10px; width: 100%; text-align: center;
             pointer-events: none; color: white; text-shadow: 2px 2px 4px #000; z-index: 10;
         }
 
         .controls {
-            position: absolute; top: 90px; width: 100%;
+            position: absolute; top: 100px; width: 100%;
             display: flex; justify-content: space-around; z-index: 10;
         }
 
@@ -30,41 +44,20 @@
             font-size: 28px; width: 65px; height: 65px; border-radius: 50%;
             border: 3px solid #333; background: #ffcc80; box-shadow: 0 4px #999;
         }
-
-        .menu-btn {
-            padding: 15px 30px; margin: 10px; font-size: 20px; font-weight: bold;
-            background: #ffcc80; border: none; border-radius: 10px; color: #333;
-        }
-
-        #frenzyTimer { color: #ff4444; font-size: 24px; font-weight: bold; display: none; }
-        
-        /* Vibe Bar Styling */
-        #vibeContainer { width: 200px; height: 10px; background: #444; margin: 5px auto; border-radius: 5px; overflow: hidden; }
-        #vibeBar { width: 0%; height: 100%; background: linear-gradient(90deg, #ff00cc, #3333ff); transition: width 0.3s; }
+        button.game-btn:active { transform: translateY(2px); box-shadow: 0 2px #666; }
     </style>
 </head>
 <body>
 
-<div id="welcomeScreen" class="overlay-screen">
-    <h1 style="color:#ffcc80; font-size: 36px; margin-bottom: 0;">MOCHKIL</h1>
-    <h2 style="margin-top: 0; letter-spacing: 2px;">SNACK FRENZY</h2>
-    <p>Kitchen: IMG_2515 | Mode: 2026 Stable</p>
-    <button class="menu-btn" onclick="startGame('mission')">MISSION MODE (Goal: 2500)</button>
+<div id="welcomeScreen">
+    <button class="menu-btn" onclick="startGame('mission')">MISSION MODE</button>
     <button class="menu-btn" onclick="startGame('endless')">ENDLESS PLAY</button>
 </div>
 
-<div id="endScreen" class="overlay-screen" style="display:none;">
-    <h1 id="endTitle" style="color:#ffcc80;"></h1>
-    <p id="endStats"></p>
-    <button class="menu-btn" onclick="location.reload()">MAIN MENU</button>
-</div>
-
 <div id="gameUI" class="ui-top" style="display:none;">
-    <div id="modeDisplay" style="font-size: 12px; opacity: 0.8;"></div>
     Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span><br>
-    Hunger: <span id="meterDisplay">0</span>%
-    <div id="vibeContainer"><div id="vibeBar"></div></div>
-    <div id="frenzyTimer">FRENZY: <span id="seconds">8</span>s</div>
+    Vibe: <div style="width:150px; height:8px; background:#444; margin:5px auto; border-radius:4px;"><div id="vibeBar" style="width:0%; height:100%; background:cyan;"></div></div>
+    <div id="frenzyTimer" style="display:none; color:red;">FRENZY: <span id="seconds">8</span>s</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -81,33 +74,23 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// === Asset Loading ===
-const assets = {
-    bg: "IMG_2515.png",
-    idle: "mochkil_idle.png",
-    walk: "mochkil_left.png",
-    eat: "mochkil_eat_left.png",
-    coma: "mochkil_food_coma.png",
-    azul: "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png"
-};
+// === Assets ===
+const assets = { bg: "IMG_2515.png", idle: "mochkil_idle.png", walk: "mochkil_left.png", eat: "mochkil_eat_left.png", coma: "mochkil_food_coma.png", azul: "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png" };
 const images = {};
 for(let k in assets) { images[k]=new Image(); images[k].src=assets[k]; }
 
-// === Game State ===
-let gameState = "welcome", gameMode = "", score = 0, snackMeter = 0, vibe = 0, isFrenzy = false;
+let gameState = "welcome", gameMode = "", score = 0, snackMeter = 0, vibe = 50, isFrenzy = false;
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
 let mochkil = { x: 50, y: 0, w: 220, h: 220, state: "idle", facingEast: true };
-let azul = { x: 800, y: 0, w: 140, h: 140, speed: 2.5 };
-let slices = [];
-
-const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "NO CAP!", "W CHEF!", "YAAAS!", "FR FR!"];
+let azul = { x: 800, y: 150, w: 140, h: 140, speed: 2.5 }; // Azul is higher up
+let slices = [], droolDrops = [];
+const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!"];
 
 function resize() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
     mochkil.y = canvas.height - mochkil.h;
-    azul.y = canvas.height * 0.45;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -117,48 +100,41 @@ function startGame(mode) {
     document.getElementById("welcomeScreen").style.display = "none";
     document.getElementById("gameUI").style.display = "block";
     document.getElementById("controls").style.display = "flex";
-    document.getElementById("modeDisplay").innerText = mode.toUpperCase() + " MODE";
     requestAnimationFrame(gameLoop);
 }
 
 function update() {
     if(gameState !== "playing") return;
 
-    if(gameMode === "mission" && score >= 2500) {
-        gameState = "ended";
-        document.getElementById("endScreen").style.display = "flex";
-        document.getElementById("endTitle").innerText = "MISSION COMPLETE! 🎉";
-        document.getElementById("endStats").innerText = "Final Score: " + score;
-        return;
-    }
-
-    if(snackMeter >= 100 && !isFrenzy) {
-        isFrenzy = true; let time = 8;
-        document.getElementById("frenzyTimer").style.display = "block";
-        let timer = setInterval(() => {
-            time--; document.getElementById("seconds").innerText = time;
-            if(time <= 0) { clearInterval(timer); isFrenzy = false; snackMeter = 0; document.getElementById("frenzyTimer").style.display = "none"; }
-        }, 1000);
-    }
-
+    // Azul AI & Drool
     azul.x -= (isFrenzy ? 8 : 3);
+    if (Math.random() > 0.98) droolDrops.push({ x: azul.x + 50, y: azul.y + 100, s: 6 });
+
     if(azul.x < -200) {
         azul.x = canvas.width + 100;
-        if(score > hiScore) { hiScore = score; localStorage.setItem('moch_hi_26', hiScore); document.getElementById("hiScoreDisplay").innerText = hiScore;}
+        if(score > hiScore) { hiScore = score; localStorage.setItem('moch_hi_26', hiScore); document.getElementById("hiScoreDisplay").innerText = hiScore; }
     }
 
+    // Drool Physics
+    droolDrops.forEach((d, i) => {
+        d.y += d.s;
+        if (d.y > mochkil.y && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
+            vibe = Math.max(0, vibe - 15); droolDrops.splice(i, 1);
+        }
+    });
+
+    // Vertical Arc Throw Physics
     slices.forEach((s, i) => {
-        s.x += s.dx; s.life--;
+        s.x += s.dx; s.y += s.dy; s.dy += 0.5; // Gravity
+        s.life--;
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
-            score += isFrenzy ? 100 : 25;
-            vibe = Math.min(100, vibe + 5);
-            azul.x += 150; slices.splice(i, 1);
+            score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 5);
+            azul.x += 160; slices.splice(i, 1);
         }
         if(s.life <= 0) slices.splice(i, 1);
     });
 
     document.getElementById("scoreDisplay").innerText = score;
-    document.getElementById("meterDisplay").innerText = Math.floor(snackMeter);
     document.getElementById("vibeBar").style.width = vibe + "%";
 }
 
@@ -166,36 +142,27 @@ function draw() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(images.bg.complete) ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
 
-    // Shadow
-    ctx.beginPath();
-    ctx.ellipse(mochkil.x + 110, canvas.height - 10, 70, 15, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.4)"; ctx.fill();
+    // Drool
+    ctx.font = "30px serif";
+    droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
 
-    // Mochkil
+    // Characters
+    ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
+    
     ctx.save();
     let img = images[mochkil.state] || images.idle;
-    if(mochkil.facingEast && mochkil.state !== "idle" && mochkil.state !== "coma") {
+    if(mochkil.facingEast && mochkil.state !== "idle") {
         ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
         ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h);
     } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
     ctx.restore();
 
-    // Azul
-    if(isFrenzy) { ctx.shadowBlur = 25; ctx.shadowColor = "red"; }
-    ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
-    ctx.shadowBlur = 0;
-
-    // Slices & Speech
+    // Arcing Slices & Bubbles
     slices.forEach(s => {
         ctx.font = "50px serif"; ctx.fillText("🍰", s.x, s.y);
-        ctx.save();
-        ctx.globalAlpha = s.life / 60;
-        ctx.font = "bold 20px sans-serif";
-        ctx.fillStyle = "white";
-        ctx.strokeStyle = "black"; ctx.lineWidth = 3;
-        let wobble = Math.sin(Date.now()/100) * 5;
-        ctx.strokeText(s.phrase, s.x, s.y - 40 + wobble);
-        ctx.fillText(s.phrase, s.x, s.y - 40 + wobble);
+        ctx.save(); ctx.globalAlpha = s.life/60; ctx.font = "bold 20px sans-serif";
+        ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
+        ctx.strokeText(s.phrase, s.x, s.y - 40); ctx.fillText(s.phrase, s.x, s.y - 40);
         ctx.restore();
     });
 }
@@ -205,12 +172,10 @@ document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.pre
 document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; });
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
     e.preventDefault(); 
-    slices.push({ x: mochkil.x + 110, y: mochkil.y + 110, dx: mochkil.facingEast ? 15 : -15, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 60 }); 
+    slices.push({ x: mochkil.x + 110, y: mochkil.y + 50, dx: mochkil.facingEast ? 8 : -8, dy: -18, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 80 }); 
 });
-document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "eat"; snackMeter = Math.min(110, snackMeter + 10); score += 5; });
-document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
-
-document.querySelectorAll("button.game-btn").forEach(btn => btn.addEventListener("touchend", () => { if(mochkil.state !== "coma") mochkil.state = "idle"; }));
+document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "eat"; snackMeter += 10; vibe = Math.min(100, vibe+2); });
+document.querySelectorAll("button.game-btn").forEach(btn => btn.addEventListener("touchend", () => mochkil.state = "idle"));
 
 function gameLoop() { if(gameState === "playing") { update(); draw(); requestAnimationFrame(gameLoop); } }
 </script>
