@@ -16,12 +16,11 @@
             position: relative;
             width: 100vw; height: 100vh;
             background: url('arcade.PNG') no-repeat center center;
-            background-size: contain; /* Using contain to keep aspect ratio of cabinet */
+            background-size: 100% 100%;
             z-index: 1;
         }
 
-        /* The Virtual Screen - Overlay Layer */
-        /* ADJUST THESE % VALUES TO ALIGN WITH THE SCREEN IN YOUR PNG */
+        /* The Perfected Virtual Screen */
         #gameScreen {
             position: absolute;
             top: 37%; 
@@ -31,19 +30,18 @@
             background: #000;
             z-index: 10;
             overflow: hidden;
-            border-radius: 5px;
-            box-shadow: inset 0 0 15px rgba(0,255,0,0.2);
+            border-radius: 2px;
         }
 
         #gameCanvas { width: 100%; height: 100%; display: block; }
 
         .ui-top {
-            position: absolute; top: 10px; width: 100%; text-align: center;
-            color: #0f0; font-family: 'Courier New', monospace; font-size: 14px;
-            text-shadow: 2px 2px #000; z-index: 20; pointer-events: none;
+            position: absolute; top: 5px; width: 100%; text-align: center;
+            color: #0f0; font-family: 'Courier New', monospace; font-size: 12px;
+            text-shadow: 1px 1px #000; z-index: 20; pointer-events: none;
         }
 
-        /* Control Panel - Positioned over the cabinet dash */
+        /* Controls positioned on the cabinet dash area */
         .controls {
             position: absolute; bottom: 8%; width: 100%;
             display: flex; justify-content: space-around; z-index: 30;
@@ -52,18 +50,18 @@
         button.game-btn {
             font-size: 24px; width: 62px; height: 62px; border-radius: 50%;
             border: 3px solid #0f0; background: rgba(0,0,0,0.9); color: #0f0;
-            box-shadow: 0 0 15px #0f0;
+            box-shadow: 0 0 10px #0f0;
         }
         button.game-btn:active { background: #0f0; color: #000; }
 
         #welcomeScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            background: rgba(0,0,0,0.95); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100;
         }
         
         .menu-btn {
-            padding: 15px 30px; margin: 10px; background: #0f0; color: #000; 
+            padding: 12px 25px; margin: 8px; background: #0f0; color: #000; 
             border: none; border-radius: 5px; font-weight: bold; cursor: pointer;
         }
     </style>
@@ -73,14 +71,14 @@
 <div id="arcadeContainer">
     <div id="gameScreen">
         <div id="welcomeScreen">
-            <h2 style="color:#0f0;">MOCHKIL 2026</h2>
-            <button class="menu-btn" onclick="startGame('mission')">MISSION MODE</button>
+            <h3 style="color:#0f0; margin-bottom:10px;">MOCHKIL 2026</h3>
+            <button class="menu-btn" onclick="startGame('mission')">MISSION (500)</button>
             <button class="menu-btn" onclick="startGame('endless')">ENDLESS</button>
         </div>
 
         <div id="gameUI" class="ui-top" style="display:none;">
             SCORE: <span id="scoreDisplay">0</span> | HI: <span id="hiScoreDisplay">0</span>
-            <div style="width:100px; height:6px; border:1px solid #0f0; margin:4px auto;">
+            <div style="width:80px; height:4px; border:1px solid #0f0; margin:2px auto;">
                 <div id="vibeBar" style="width:50%; height:100%; background:#0f0;"></div>
             </div>
         </div>
@@ -113,8 +111,8 @@ let gameState = "welcome", gameMode = "", score = 0, vibe = 50;
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
-let mochkil = { x: 40, y: 0, w: 130, h: 130, state: "idle", facingEast: true };
-let azul = { x: 400, y: 30, w: 90, h: 90 }; 
+let mochkil = { x: 30, y: 0, w: 100, h: 100, state: "idle", facingEast: true };
+let azul = { x: 400, y: 20, w: 70, h: 70 }; 
 let slices = [], droolDrops = [];
 
 function resize() {
@@ -122,10 +120,10 @@ function resize() {
     canvas.width = rect.width;
     canvas.height = rect.height;
     mochkil.y = canvas.height - mochkil.h;
-    azul.y = canvas.height * 0.12; // Keeps Azul at the top of the "glass"
+    azul.y = canvas.height * 0.1; 
 }
 window.addEventListener('resize', resize);
-setTimeout(resize, 150);
+setTimeout(resize, 200);
 
 function startGame(mode) {
     gameMode = mode; score = 0; vibe = 50; gameState = "playing";
@@ -138,18 +136,20 @@ function startGame(mode) {
 function update() {
     if(gameState !== "playing") return;
 
-    // Daily High Score Save
+    // High Score logic (Jan 1, 2026)
     if(score > hiScore) {
         hiScore = score;
         localStorage.setItem('moch_hi_26', hiScore);
         document.getElementById("hiScoreDisplay").innerText = hiScore;
+        document.getElementById("scoreDisplay").style.color = "#0f0";
+        document.getElementById("scoreDisplay").style.textShadow = "0 0 8px #0f0";
     }
 
     if (gameMode === "mission" && score >= 500) { alert("🏆 MISSION COMPLETE!"); location.reload(); }
 
-    azul.x -= 3.2;
-    if (Math.random() > 0.88) droolDrops.push({ x: azul.x + 45, y: azul.y + 70, s: 4.5 });
-    if(azul.x < -120) azul.x = canvas.width + 100;
+    azul.x -= 3;
+    if (Math.random() > 0.88) droolDrops.push({ x: azul.x + 35, y: azul.y + 50, s: 4 });
+    if(azul.x < -100) azul.x = canvas.width + 100;
 
     droolDrops.forEach((d, i) => {
         d.y += d.s;
@@ -160,10 +160,10 @@ function update() {
     });
 
     slices.forEach((s, i) => {
-        s.x += s.dx; s.y += s.dy; s.dy += 0.75; // Strong gravity for arc
+        s.x += s.dx; s.y += s.dy; s.dy += 0.8; 
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
-            score += 25; vibe = Math.min(100, vibe + 12);
-            azul.x += 160; slices.splice(i, 1);
+            score += 25; vibe = Math.min(100, vibe + 10);
+            azul.x += 140; slices.splice(i, 1);
         }
         if(s.y > canvas.height) slices.splice(i, 1);
     });
@@ -176,7 +176,8 @@ function draw() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(images.bg.complete) ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
 
-    droolDrops.forEach(d => { ctx.font = "18px serif"; ctx.fillText("💧", d.x, d.y); });
+    ctx.font = "16px serif";
+    droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
     ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
 
     let img = images[mochkil.state] || images.idle;
@@ -185,26 +186,18 @@ function draw() {
         ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h); ctx.restore();
     } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
 
-    slices.forEach(s => { ctx.font = "25px serif"; ctx.fillText("🍰", s.x, s.y); });
+    slices.forEach(s => { ctx.font = "20px serif"; ctx.fillText("🍰", s.x, s.y); });
 }
 
-// Controls
+// Fixed Plop & Wake logic
 const wake = () => { if(mochkil.state === "coma") mochkil.state = "idle"; };
-document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 30; mochkil.facingEast = false; mochkil.state = "walk"; });
-document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 30; mochkil.facingEast = true; mochkil.state = "walk"; });
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 25; mochkil.facingEast = false; mochkil.state = "walk"; });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 25; mochkil.facingEast = true; mochkil.state = "walk"; });
 document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.state = "eat"; vibe = Math.min(100, vibe+5); });
-
-// Plop logic
 document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
-
-// North Throw Physics
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
     e.preventDefault(); if(mochkil.state === "coma") return;
-    slices.push({ 
-        x: mochkil.x + 60, y: mochkil.y + 20, 
-        dx: mochkil.facingEast ? 10 : -10, 
-        dy: -25 // Launches High North
-    }); 
+    slices.push({ x: mochkil.x + 50, y: mochkil.y + 20, dx: mochkil.facingEast ? 9 : -9, dy: -22 }); 
 });
 
 document.querySelectorAll("button.game-btn").forEach(btn => {
