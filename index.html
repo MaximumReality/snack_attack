@@ -2,152 +2,140 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mochkil's Snack Attack Chaos</title>
+<title>Mochkil Snack Frenzy Demo</title>
 <style>
-  body { 
-    font-family: Arial, sans-serif; 
-    background: #ffe6cc; 
-    overflow: hidden; 
-    text-align: center;
-  }
-  #gameArea {
-    position: relative; 
-    width: 800px; 
-    height: 600px; 
-    margin: 20px auto; 
-    border: 3px solid #ff6600; 
-    background: #fff0e6;
-    overflow: hidden;
-  }
-  .snack {
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-  #mochkil {
-    position: absolute;
-    bottom: 10px;
-    left: 375px;
-    width: 100px;
-  }
-  #scoreBoard {
-    margin-top: 10px;
-    font-size: 20px;
-    color: #ff3300;
-  }
+    canvas {
+        border: 2px solid #333;
+        background-color: #fef4e0; /* kitchen vibe */
+        display: block;
+        margin: 0 auto;
+    }
 </style>
 </head>
 <body>
-<h1>Mochkil's Snack Attack Chaos 🍕🥟</h1>
-<div id="gameArea">
-  <img src="https://maximumreality.github.io/azul-mud-sandbox/IMG_2499.jpeg" id="mochkil" alt="Mochkil">
-</div>
-<div id="scoreBoard">Score: 0 | Wins: 0</div>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
 
 <script>
-let score = 0;
-let wins = 0;
-let frenzyMode = false;
+// === Canvas Setup ===
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-const gameArea = document.getElementById('gameArea');
-const scoreBoard = document.getElementById('scoreBoard');
-
-// Snack images (example)
-const snacks = [
-  "https://i.imgur.com/6Q9B9Yh.png", // shrimp
-  "https://i.imgur.com/9XcT8s0.png", // pizza slice
-  "https://i.imgur.com/qXJGkAe.png"  // pastilla
-];
-
-// Mochkil commentary lines
-const commentary = {
-  collect: [
-    "YAAAS! Snack mode ACTIVATED! 🍤💥",
-    "SNACK LEGENDARY! 😍",
-    "Caution: chocolate lava cake approaching… 😏"
-  ],
-  frenzy: [
-    "FRENZY MODE ACTIVATED! SNACKS EVERYWHERE! 🍕🥟💥",
-    "Azulzilla is STEALING MY SNACKS?! NOT ON MY WATCH! 😤🔥",
-    "Combo meter over 9000?! My taste buds are LEGENDARY! 😍"
-  ],
-  win: "SNACK ATTACK CHAMPION - Azul cedes his food bowl to ME 😈",
-  lose: "Azul wins... THIS TIME. Snack revenge mode activated 💥"
+// === Load Mochkil Sprites ===
+const sprites = {
+    idle: new Image(),
+    walkLeft: new Image(),
+    walkRightCake: new Image(),
+    eatLeft: new Image(),
+    foodComa: new Image()
 };
 
-// Create a snack
-function spawnSnack() {
-  const snack = document.createElement('img');
-  snack.src = snacks[Math.floor(Math.random() * snacks.length)];
-  snack.className = 'snack';
-  snack.style.left = Math.random() * (gameArea.clientWidth - 50) + 'px';
-  snack.style.top = '0px';
-  gameArea.appendChild(snack);
+sprites.idle.src = "mochkil_idle.png";
+sprites.walkLeft.src = "mochkil_left.png";
+sprites.walkRightCake.src = "mochkil_walk_right_cake.png";
+sprites.eatLeft.src = "mochkil_eat_left.png";
+sprites.foodComa.src = "mochkil_food_coma.png";
 
-  // Snack falls
-  const fallInterval = setInterval(() => {
-    let top = parseInt(snack.style.top);
-    if(top > gameArea.clientHeight - 60) {
-      clearInterval(fallInterval);
-      snack.remove();
-      score = Math.max(0, score - 1); // penalty if missed
-      updateScore();
+// === Game Variables ===
+let mochkilX = 350;
+let mochkilY = 400;
+let currentSprite = "idle";
+let facingEast = true;
+let currentSnack = "🍰"; // emoji snack
+const canvasWidth = canvas.width;
+const canvasHeight = canvas.height;
+
+// === Throwing Slices (Frenzy Mode) ===
+let slices = []; // array of thrown emoji slices
+
+function throwSlice() {
+    // slice starts at Mochkil's hand
+    slices.push({
+        x: mochkilX + 50,
+        y: mochkilY + 20,
+        dx: facingEast ? 6 : -6, // speed depends on direction
+        emoji: "🍰"
+    });
+}
+
+// === Draw Function ===
+function drawMochkil() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background layer
+    ctx.fillStyle = "#ffe8b3";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Mochkil sprite
+    ctx.save();
+    if(facingEast && (currentSprite === "walkLeft" || currentSprite === "eatLeft")){
+        ctx.translate(mochkilX + 100, mochkilY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(sprites[currentSprite], 0, 0);
     } else {
-      snack.style.top = top + 5 + 'px';
+        ctx.drawImage(sprites[currentSprite], mochkilX, mochkilY);
     }
-  }, 50);
+    ctx.restore();
 
-  // Click to collect
-  snack.addEventListener('click', () => {
-    clearInterval(fallInterval);
-    snack.remove();
-    score += 1;
-    updateScore();
-    showCommentary(frenzyMode ? commentary.frenzy : commentary.collect);
-    checkFrenzyUnlock();
-  });
+    // Emoji snack in hand
+    let emojiX = mochkilX + 20;
+    let emojiY = mochkilY + 20;
+    ctx.font = "40px serif";
+    ctx.fillText(currentSnack, emojiX, emojiY);
+
+    // Draw thrown slices
+    slices.forEach(slice => {
+        ctx.fillText(slice.emoji, slice.x, slice.y);
+    });
 }
 
-// Update scoreboard
-function updateScore() {
-  scoreBoard.textContent = `Score: ${score} | Wins: ${wins}`;
+// === Update Function ===
+function update() {
+    // Move thrown slices
+    slices.forEach((slice, i) => {
+        slice.x += slice.dx;
+        // Remove slice if it leaves canvas
+        if(slice.x < 0 || slice.x > canvasWidth){
+            slices.splice(i,1);
+        }
+    });
 }
 
-// Show commentary
-function showCommentary(lines) {
-  const line = lines[Math.floor(Math.random() * lines.length)];
-  alert(line); // simple popup, can be replaced with in-game text overlay
-}
+// === Key Controls ===
+document.addEventListener("keydown", (e) => {
+    if(e.key === "ArrowLeft"){
+        currentSprite = "walkLeft";
+        facingEast = false;
+        mochkilX -= 10;
+    } else if(e.key === "ArrowRight"){
+        currentSprite = "walkLeft"; // use walkLeft sprite flipped
+        facingEast = true;
+        mochkilX += 10;
+    } else if(e.key === "ArrowUp"){
+        currentSprite = "eatLeft";
+    } else if(e.key === "ArrowDown"){
+        currentSprite = "foodComa";
+    } else if(e.key === " "){ // spacebar throws a slice
+        throwSlice();
+    }
 
-// Check Frenzy Mode unlock
-function checkFrenzyUnlock() {
-  if(score >= 10 && wins >= 3 && !frenzyMode) {
-    frenzyMode = true;
-    alert("🎉 FRENZY MODE UNLOCKED! Azulzilla appears! 🍕🥟💥");
-    // Optional: spawn snacks faster or add Azulzilla logic here
-  }
-}
-
-// Spawn snacks periodically
-setInterval(spawnSnack, 1500);
-
-// Placeholder win/lose triggers
-document.addEventListener('keydown', (e) => {
-  if(e.key === 'w') {
-    wins += 1;
-    score = 0;
-    updateScore();
-    alert(commentary.win);
-  }
-  if(e.key === 'l') {
-    wins = 0;
-    score = 0;
-    updateScore();
-    alert(commentary.lose);
-  }
+    // Canvas boundaries
+    mochkilX = Math.max(0, Math.min(canvasWidth - 100, mochkilX));
+    mochkilY = Math.max(0, Math.min(canvasHeight - 100, mochkilY));
 });
+
+document.addEventListener("keyup", (e) => {
+    currentSprite = "idle";
+});
+
+// === Game Loop ===
+function gameLoop(){
+    update();
+    drawMochkil();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
 </script>
 </body>
 </html>
