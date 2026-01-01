@@ -3,109 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mochkil: Arcade 2026</title>
+    <title>Mochkil Arcade 2026</title>
     <style>
         body { 
-            margin: 0; 
-            background-color: #111; 
-            overflow: hidden; 
-            touch-action: none; 
-            height: 100vh; 
-            font-family: 'Courier New', monospace;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            margin: 0; background-color: #000; overflow: hidden; 
+            touch-action: none; height: 100vh; font-family: 'Courier New', monospace;
         }
 
-        /* The Arcade Cabinet Frame */
-        #arcadeFrame {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            background: url('arcade.png') no-repeat center center;
-            background-size: contain; /* Ensures the cabinet fits the screen */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        /* The "Screen" inside the arcade.png */
-        /* You may need to adjust top/left/width/height % to match where the screen is in your image */
-        #gameViewport {
-            position: absolute;
-            top: 20%; 
-            width: 70%; 
-            height: 50%;
-            background: #000;
-            overflow: hidden;
-            border: 2px solid #333;
-            box-shadow: inset 0 0 20px #000;
-        }
-
-        #gameCanvas { display: block; width: 100%; height: 100%; }
-        
-        #welcomeScreen {
+        /* 1. The Arcade Overlay (Sits on top) */
+        #arcadeOverlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8);
-            display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 20;
-            color: #0f0;
+            background: url('arcade.png') no-repeat center center;
+            background-size: 100% 100%; /* Stretches to fill the frame */
+            z-index: 50; /* Above everything */
+            pointer-events: none; /* Allows you to click "through" the frame to the game */
         }
-        
-        .menu-btn {
-            padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold;
-            background: #0f0; border: none; border-radius: 5px; color: #000;
-            cursor: pointer; box-shadow: 0 4px #060;
-        }
-        .menu-btn:active { transform: translateY(2px); box-shadow: 0 2px #060; }
 
+        /* 2. The Game Layer (Sits behind the frame) */
+        #gameCanvas {
+            position: absolute; top: 0; left: 0; 
+            width: 100%; height: 100%; z-index: 10;
+        }
+
+        /* 3. The UI (Centered in the "Screen" area) */
         .ui-top {
-            position: absolute; top: 5px; width: 100%; text-align: center;
-            pointer-events: none; color: #0f0; font-size: 12px; z-index: 10;
+            position: absolute; top: 15%; width: 100%; text-align: center;
+            color: #0f0; text-shadow: 2px 2px #000; z-index: 20;
         }
 
+        /* 4. Controls (Positioned at the bottom on the cabinet "dash") */
         .controls {
-            position: absolute; 
-            bottom: 5%; /* Positioned near the arcade's joystick area */
-            width: 100%;
-            display: flex; justify-content: space-around; z-index: 30;
+            position: absolute; bottom: 5%; width: 100%;
+            display: flex; justify-content: space-around; z-index: 60; /* Above the frame */
         }
 
         button.game-btn {
-            font-size: 24px; width: 55px; height: 55px; border-radius: 50%;
-            border: 2px solid #0f0; background: #000; color: #0f0;
-            box-shadow: 0 4px #060;
+            font-size: 24px; width: 60px; height: 60px; border-radius: 50%;
+            border: 3px solid #0f0; background: rgba(0,0,0,0.8); color: #0f0;
+            box-shadow: 0 0 10px #0f0;
+        }
+
+        #welcomeScreen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+        }
+        
+        .menu-btn {
+            padding: 15px 30px; margin: 10px; font-size: 20px; font-weight: bold;
+            background: #0f0; color: #000; border: none; border-radius: 10px;
         }
     </style>
 </head>
 <body>
 
-<div id="arcadeFrame">
-    <div id="gameViewport">
-        <div id="welcomeScreen">
-            <h2>MOCHKIL ARCADE</h2>
-            <button class="menu-btn" onclick="startGame('mission')">START MISSION</button>
-            <button class="menu-btn" onclick="startGame('endless')">ENDLESS MODE</button>
-        </div>
+<div id="arcadeOverlay"></div>
 
-        <div id="gameUI" class="ui-top" style="display:none;">
-            SCORE: <span id="scoreDisplay">0</span> | HI: <span id="hiScoreDisplay">0</span>
-            <div id="vibeBarContainer" style="width:100px; height:6px; border:1px solid #0f0; margin:2px auto;">
-                <div id="vibeBar" style="width:50%; height:100%; background:#0f0;"></div>
-            </div>
-            <div id="frenzyTimer" style="display:none;">FRENZY!! <span id="seconds">8</span></div>
-        </div>
+<div id="welcomeScreen">
+    <h1 style="color:#0f0;">MOCHKIL ARCADE</h1>
+    <button class="menu-btn" onclick="startGame('mission')">MISSION MODE</button>
+    <button class="menu-btn" onclick="startGame('endless')">ENDLESS PLAY</button>
+</div>
 
-        <canvas id="gameCanvas"></canvas>
+<div id="gameUI" class="ui-top" style="display:none;">
+    SCORE: <span id="scoreDisplay">0</span> | HI: <span id="hiScoreDisplay">0</span>
+    <div style="width:120px; height:8px; border:1px solid #0f0; margin:5px auto;">
+        <div id="vibeBar" style="width:50%; height:100%; background:#0f0;"></div>
     </div>
+</div>
 
-    <div id="controls" class="controls" style="display:none;">
-        <button class="game-btn" id="leftBtn">🕹️</button>
-        <button class="game-btn" id="rightBtn">🕹️</button>
-        <button class="game-btn" id="eatBtn">🍴</button>
-        <button class="game-btn" id="throwBtn">🚀</button>
-        <button class="game-btn" id="comaBtn">💤</button>
-    </div>
+<canvas id="gameCanvas"></canvas>
+
+<div id="controls" class="controls" style="display:none;">
+    <button class="game-btn" id="leftBtn">🕹️</button>
+    <button class="game-btn" id="rightBtn">🕹️</button>
+    <button class="game-btn" id="eatBtn">🍴</button>
+    <button class="game-btn" id="throwBtn">🚀</button>
+    <button class="game-btn" id="comaBtn">💤</button>
 </div>
 
 <script>
@@ -121,29 +95,23 @@ const images = {};
 for(let k in assets) { images[k]=new Image(); images[k].src=assets[k]; }
 
 let gameState = "welcome", gameMode = "", score = 0, vibe = 50, isFrenzy = false;
-let confetti = [];
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
-let mochkil = { x: 50, y: 0, w: 150, h: 150, state: "idle", facingEast: true };
-let azul = { x: 600, y: 50, w: 110, h: 110, speed: 3 }; 
-let slices = [], droolDrops = [];
+let mochkil = { x: 100, y: 0, w: 180, h: 180, state: "idle", facingEast: true };
+let azul = { x: 800, y: 150, w: 120, h: 120, speed: 3.5 }; 
+let slices = [], droolDrops = [], confetti = [];
+
 const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!"];
 
 function resize() {
-    const rect = document.getElementById("gameViewport").getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-    mochkil.y = canvas.height - mochkil.h;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    mochkil.y = canvas.height * 0.75 - mochkil.h; // Adjusted to sit higher in the cabinet window
+    azul.y = canvas.height * 0.25; // Adjusted to be visible in top window
 }
 window.addEventListener('resize', resize);
-setTimeout(resize, 100); // Small delay to ensure parent rect is calculated
-
-function spawnConfetti() {
-    for(let i=0; i<50; i++) {
-        confetti.push({ x: Math.random()*canvas.width, y: -10, r: Math.random()*4+2, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: Math.random()*3+2 });
-    }
-}
+resize();
 
 function startGame(mode) {
     gameMode = mode; score = 0; vibe = 50; gameState = "playing";
@@ -159,36 +127,25 @@ function update() {
     // Frenzy Check
     if (vibe >= 100 && !isFrenzy) {
         isFrenzy = true;
-        document.getElementById("frenzyTimer").style.display = "block";
-        let t = 8;
-        const interval = setInterval(() => {
-            t--; document.getElementById("seconds").innerText = t;
-            if (t <= 0) { clearInterval(interval); isFrenzy = false; vibe = 50; document.getElementById("frenzyTimer").style.display = "none"; }
-        }, 1000);
+        setTimeout(() => { isFrenzy = false; vibe = 50; }, 8000);
     }
 
-    // Win Logic
-    if (gameMode === "mission" && score >= 500) {
-        spawnConfetti();
-        gameState = "won";
-        setTimeout(() => { alert("MISSION COMPLETE! 🏆"); location.reload(); }, 1000);
+    // Win check
+    if(gameMode === "mission" && score >= 500) {
+        alert("MISSION COMPLETE! 🏆"); location.reload();
     }
 
-    // Azul Drip
-    azul.x -= (isFrenzy ? 7 : 3);
-    if (Math.random() > 0.88) droolDrops.push({ x: azul.x + 50, y: azul.y + 80, s: 4 + Math.random()*2 });
+    azul.x -= (isFrenzy ? 8 : 3.5);
+    if (Math.random() > 0.85) droolDrops.push({ x: azul.x + 60, y: azul.y + 100, s: 5 });
 
-    if(azul.x < -150) {
+    if(azul.x < -200) {
         azul.x = canvas.width + 100;
         if(score > hiScore) { 
-            hiScore = score; 
-            localStorage.setItem('moch_hi_26', hiScore); 
+            hiScore = score; localStorage.setItem('moch_hi_26', hiScore); 
             document.getElementById("hiScoreDisplay").innerText = hiScore;
-            spawnConfetti();
         }
     }
 
-    // Drool/Slices Physics
     droolDrops.forEach((d, i) => {
         d.y += d.s;
         if (d.y > mochkil.y && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
@@ -198,15 +155,13 @@ function update() {
     });
 
     slices.forEach((s, i) => {
-        s.x += s.dx; s.y += s.dy; s.dy += 0.7; s.life--;
+        s.x += s.dx; s.y += s.dy; s.dy += 0.6;
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
-            score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 10);
-            azul.x += 150; slices.splice(i, 1);
+            score += 25; vibe = Math.min(100, vibe + 10);
+            azul.x += 180; slices.splice(i, 1);
         }
-        if(s.life <= 0) slices.splice(i, 1);
     });
 
-    confetti.forEach((c, i) => { c.y += c.s; if(c.y > canvas.height) confetti.splice(i,1); });
     document.getElementById("scoreDisplay").innerText = score;
     document.getElementById("vibeBar").style.width = vibe + "%";
 }
@@ -215,36 +170,35 @@ function draw() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(images.bg.complete) ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
 
-    ctx.font = "20px serif";
+    // Drool & Azul
+    ctx.font = "30px serif";
     droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
-
-    if(isFrenzy) { ctx.shadowBlur = 15; ctx.shadowColor = "red"; }
     ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
-    ctx.shadowBlur = 0;
 
+    // Mochkil
+    ctx.save();
     let img = images[mochkil.state] || images.idle;
     if(mochkil.facingEast && (mochkil.state === "walk" || mochkil.state === "eat")) {
-        ctx.save(); ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
-        ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h); ctx.restore();
+        ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
+        ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h);
     } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
+    ctx.restore();
 
+    // Slices
     slices.forEach(s => {
-        ctx.font = "30px serif"; ctx.fillText("🍰", s.x, s.y);
-        ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "white";
-        ctx.fillText(s.phrase, s.x, s.y - 20);
+        ctx.font = "40px serif"; ctx.fillText("🍰", s.x, s.y);
+        ctx.font = "bold 14px sans-serif"; ctx.fillStyle = "white";
+        ctx.fillText(phrases[0], s.x, s.y - 20);
     });
-
-    confetti.forEach(c => { ctx.fillStyle = c.color; ctx.fillRect(c.x, c.y, c.r, c.r); });
 }
 
-// Control Bindings
 const wake = () => { if(mochkil.state === "coma") mochkil.state = "idle"; };
-document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 30; mochkil.facingEast = false; mochkil.state = "walk"; });
-document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 30; mochkil.facingEast = true; mochkil.state = "walk"; });
-document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.state = "eat"; vibe = Math.min(100, vibe+5); score += 5; });
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 35; mochkil.facingEast = false; mochkil.state = "walk"; });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; });
+document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.state = "eat"; vibe = Math.min(100, vibe+5); });
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
     e.preventDefault(); if(mochkil.state === "coma") return;
-    slices.push({ x: mochkil.x + 70, y: mochkil.y + 30, dx: mochkil.facingEast ? 8 : -8, dy: -18, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 70 }); 
+    slices.push({ x: mochkil.x + 80, y: mochkil.y + 40, dx: mochkil.facingEast ? 9 : -9, dy: -22 }); 
 });
 document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
 document.querySelectorAll("button.game-btn").forEach(btn => btn.addEventListener("touchend", () => { if(btn.id !== "comaBtn" && mochkil.state !== "coma") mochkil.state = "idle"; }));
