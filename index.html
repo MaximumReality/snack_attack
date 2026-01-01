@@ -2,19 +2,49 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mochkil Snack Frenzy Demo</title>
+<title>Mochkil Snack Frenzy Mobile Demo</title>
 <style>
+    body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0;
+        background-color: #fef4e0;
+    }
     canvas {
         border: 2px solid #333;
-        background-color: #fef4e0; /* kitchen vibe */
-        display: block;
-        margin: 0 auto;
+        background-color: #fef4e0;
+        margin-top: 20px;
+    }
+    .controls {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+    }
+    button {
+        font-size: 18px;
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: none;
+        background-color: #ffcc80;
+        cursor: pointer;
+    }
+    button:active {
+        background-color: #ffa726;
     }
 </style>
 </head>
 <body>
 
 <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+<div class="controls">
+    <button id="leftBtn">⬅️ Left</button>
+    <button id="rightBtn">➡️ Right</button>
+    <button id="eatBtn">🍰 Eat</button>
+    <button id="comaBtn">💤 Plop</button>
+    <button id="throwBtn">🍰 Throw</button>
+</div>
 
 <script>
 // === Canvas Setup ===
@@ -46,14 +76,13 @@ const canvasWidth = canvas.width;
 const canvasHeight = canvas.height;
 
 // === Throwing Slices (Frenzy Mode) ===
-let slices = []; // array of thrown emoji slices
+let slices = []; 
 
 function throwSlice() {
-    // slice starts at Mochkil's hand
     slices.push({
         x: mochkilX + 50,
         y: mochkilY + 20,
-        dx: facingEast ? 6 : -6, // speed depends on direction
+        dx: facingEast ? 6 : -6,
         emoji: "🍰"
     });
 }
@@ -62,7 +91,7 @@ function throwSlice() {
 function drawMochkil() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background layer
+    // Background
     ctx.fillStyle = "#ffe8b3";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -77,13 +106,11 @@ function drawMochkil() {
     }
     ctx.restore();
 
-    // Emoji snack in hand
-    let emojiX = mochkilX + 20;
-    let emojiY = mochkilY + 20;
+    // Emoji snack
     ctx.font = "40px serif";
-    ctx.fillText(currentSnack, emojiX, emojiY);
+    ctx.fillText(currentSnack, mochkilX + 20, mochkilY + 20);
 
-    // Draw thrown slices
+    // Thrown slices
     slices.forEach(slice => {
         ctx.fillText(slice.emoji, slice.x, slice.y);
     });
@@ -91,45 +118,47 @@ function drawMochkil() {
 
 // === Update Function ===
 function update() {
-    // Move thrown slices
     slices.forEach((slice, i) => {
         slice.x += slice.dx;
-        // Remove slice if it leaves canvas
-        if(slice.x < 0 || slice.x > canvasWidth){
-            slices.splice(i,1);
-        }
+        if(slice.x < 0 || slice.x > canvasWidth) slices.splice(i,1);
     });
 }
 
-// === Key Controls ===
-document.addEventListener("keydown", (e) => {
-    if(e.key === "ArrowLeft"){
-        currentSprite = "walkLeft";
-        facingEast = false;
-        mochkilX -= 10;
-    } else if(e.key === "ArrowRight"){
-        currentSprite = "walkLeft"; // use walkLeft sprite flipped
-        facingEast = true;
-        mochkilX += 10;
-    } else if(e.key === "ArrowUp"){
-        currentSprite = "eatLeft";
-    } else if(e.key === "ArrowDown"){
-        currentSprite = "foodComa";
-    } else if(e.key === " "){ // spacebar throws a slice
-        throwSlice();
-    }
+// === Button Controls ===
+document.getElementById("leftBtn").addEventListener("touchstart", () => {
+    currentSprite = "walkLeft";
+    facingEast = false;
+    mochkilX -= 10;
+});
+document.getElementById("rightBtn").addEventListener("touchstart", () => {
+    currentSprite = "walkLeft"; // use walkLeft sprite flipped
+    facingEast = true;
+    mochkilX += 10;
+});
+document.getElementById("eatBtn").addEventListener("touchstart", () => {
+    currentSprite = "eatLeft";
+});
+document.getElementById("comaBtn").addEventListener("touchstart", () => {
+    currentSprite = "foodComa";
+});
+document.getElementById("throwBtn").addEventListener("touchstart", throwSlice);
 
-    // Canvas boundaries
+// Reset to idle on touchend
+document.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("touchend", () => {
+        currentSprite = "idle";
+    });
+});
+
+// Canvas boundaries
+function clampPosition() {
     mochkilX = Math.max(0, Math.min(canvasWidth - 100, mochkilX));
     mochkilY = Math.max(0, Math.min(canvasHeight - 100, mochkilY));
-});
-
-document.addEventListener("keyup", (e) => {
-    currentSprite = "idle";
-});
+}
 
 // === Game Loop ===
 function gameLoop(){
+    clampPosition();
     update();
     drawMochkil();
     requestAnimationFrame(gameLoop);
