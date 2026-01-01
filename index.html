@@ -3,68 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mochkil: Kitchen Chaos 2026</title>
+    <title>Mochkil: Arcade 2026</title>
     <style>
-        body { margin: 0; background-color: #222; overflow: hidden; touch-action: none; height: 100vh; font-family: 'Courier New', monospace; }
-        #gameCanvas { display: block; }
+        body { 
+            margin: 0; 
+            background-color: #111; 
+            overflow: hidden; 
+            touch-action: none; 
+            height: 100vh; 
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The Arcade Cabinet Frame */
+        #arcadeFrame {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: url('arcade.png') no-repeat center center;
+            background-size: contain; /* Ensures the cabinet fits the screen */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The "Screen" inside the arcade.png */
+        /* You may need to adjust top/left/width/height % to match where the screen is in your image */
+        #gameViewport {
+            position: absolute;
+            top: 20%; 
+            width: 70%; 
+            height: 50%;
+            background: #000;
+            overflow: hidden;
+            border: 2px solid #333;
+            box-shadow: inset 0 0 20px #000;
+        }
+
+        #gameCanvas { display: block; width: 100%; height: 100%; }
         
         #welcomeScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: url('IMG_2523.png') no-repeat center center;
-            background-size: cover;
+            background: rgba(0,0,0,0.8);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 20;
+            color: #0f0;
         }
         
         .menu-btn {
-            padding: 20px 40px; margin: 15px; font-size: 22px; font-weight: bold;
-            background: rgba(255, 204, 128, 0.95); border: 4px solid #333; 
-            border-radius: 15px; color: #333; transition: all 0.1s;
-            box-shadow: 0 6px #666; cursor: pointer;
+            padding: 15px 30px; margin: 10px; font-size: 18px; font-weight: bold;
+            background: #0f0; border: none; border-radius: 5px; color: #000;
+            cursor: pointer; box-shadow: 0 4px #060;
         }
-        .menu-btn:active { transform: translateY(4px); box-shadow: 0 2px #333; background: #ffa726; }
+        .menu-btn:active { transform: translateY(2px); box-shadow: 0 2px #060; }
 
         .ui-top {
-            position: absolute; top: 10px; width: 100%; text-align: center;
-            pointer-events: none; color: white; text-shadow: 2px 2px 4px #000; z-index: 10;
+            position: absolute; top: 5px; width: 100%; text-align: center;
+            pointer-events: none; color: #0f0; font-size: 12px; z-index: 10;
         }
 
         .controls {
-            position: absolute; top: 110px; width: 100%;
-            display: flex; justify-content: space-around; z-index: 10;
+            position: absolute; 
+            bottom: 5%; /* Positioned near the arcade's joystick area */
+            width: 100%;
+            display: flex; justify-content: space-around; z-index: 30;
         }
 
         button.game-btn {
-            font-size: 28px; width: 65px; height: 65px; border-radius: 50%;
-            border: 3px solid #333; background: #ffcc80; box-shadow: 0 4px #999;
+            font-size: 24px; width: 55px; height: 55px; border-radius: 50%;
+            border: 2px solid #0f0; background: #000; color: #0f0;
+            box-shadow: 0 4px #060;
         }
-
-        #vibeContainer { width: 180px; height: 10px; background: #444; margin: 5px auto; border-radius: 5px; overflow: hidden; border: 1px solid #fff; }
-        #vibeBar { width: 50%; height: 100%; background: cyan; transition: width 0.2s; }
-        #frenzyTimer { color: #ff4444; font-weight: bold; font-size: 20px; display: none; }
     </style>
 </head>
 <body>
 
-<div id="welcomeScreen">
-    <button class="menu-btn" onclick="startGame('mission')">Mission Mode (500 pts)</button>
-    <button class="menu-btn" onclick="startGame('endless')">Endless Play</button>
-</div>
+<div id="arcadeFrame">
+    <div id="gameViewport">
+        <div id="welcomeScreen">
+            <h2>MOCHKIL ARCADE</h2>
+            <button class="menu-btn" onclick="startGame('mission')">START MISSION</button>
+            <button class="menu-btn" onclick="startGame('endless')">ENDLESS MODE</button>
+        </div>
 
-<div id="gameUI" class="ui-top" style="display:none;">
-    Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span>
-    <div id="vibeContainer"><div id="vibeBar"></div></div>
-    <div id="frenzyTimer">FRENZY: <span id="seconds">8</span>s</div>
-</div>
+        <div id="gameUI" class="ui-top" style="display:none;">
+            SCORE: <span id="scoreDisplay">0</span> | HI: <span id="hiScoreDisplay">0</span>
+            <div id="vibeBarContainer" style="width:100px; height:6px; border:1px solid #0f0; margin:2px auto;">
+                <div id="vibeBar" style="width:50%; height:100%; background:#0f0;"></div>
+            </div>
+            <div id="frenzyTimer" style="display:none;">FRENZY!! <span id="seconds">8</span></div>
+        </div>
 
-<canvas id="gameCanvas"></canvas>
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
-<div id="controls" class="controls" style="display:none;">
-    <button class="game-btn" id="leftBtn">⬅️</button>
-    <button class="game-btn" id="rightBtn">➡️</button>
-    <button class="game-btn" id="eatBtn">🍴</button>
-    <button class="game-btn" id="throwBtn">🎯</button>
-    <button class="game-btn" id="comaBtn">💤</button>
+    <div id="controls" class="controls" style="display:none;">
+        <button class="game-btn" id="leftBtn">🕹️</button>
+        <button class="game-btn" id="rightBtn">🕹️</button>
+        <button class="game-btn" id="eatBtn">🍴</button>
+        <button class="game-btn" id="throwBtn">🚀</button>
+        <button class="game-btn" id="comaBtn">💤</button>
+    </div>
 </div>
 
 <script>
@@ -80,25 +121,27 @@ const images = {};
 for(let k in assets) { images[k]=new Image(); images[k].src=assets[k]; }
 
 let gameState = "welcome", gameMode = "", score = 0, vibe = 50, isFrenzy = false;
-let vibeShield = false, shieldTimer = 0, confetti = [];
+let confetti = [];
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
-let mochkil = { x: 100, y: 0, w: 220, h: 220, state: "idle", facingEast: true };
-let azul = { x: 800, y: 120, w: 150, h: 150, speed: 3 }; 
+let mochkil = { x: 50, y: 0, w: 150, h: 150, state: "idle", facingEast: true };
+let azul = { x: 600, y: 50, w: 110, h: 110, speed: 3 }; 
 let slices = [], droolDrops = [];
-const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!", "FR FR!"];
+const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!"];
 
 function resize() {
-    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    const rect = document.getElementById("gameViewport").getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
     mochkil.y = canvas.height - mochkil.h;
 }
 window.addEventListener('resize', resize);
-resize();
+setTimeout(resize, 100); // Small delay to ensure parent rect is calculated
 
 function spawnConfetti() {
-    for(let i=0; i<60; i++) {
-        confetti.push({ x: Math.random()*canvas.width, y: -20, r: Math.random()*6+4, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: Math.random()*4+2 });
+    for(let i=0; i<50; i++) {
+        confetti.push({ x: Math.random()*canvas.width, y: -10, r: Math.random()*4+2, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: Math.random()*3+2 });
     }
 }
 
@@ -113,37 +156,29 @@ function startGame(mode) {
 function update() {
     if(gameState !== "playing") return;
 
-    // Frenzy Logic (Vibe-based)
+    // Frenzy Check
     if (vibe >= 100 && !isFrenzy) {
         isFrenzy = true;
         document.getElementById("frenzyTimer").style.display = "block";
         let t = 8;
-        document.getElementById("seconds").innerText = t;
-        const frenzyInterval = setInterval(() => {
-            t--;
-            document.getElementById("seconds").innerText = t;
-            if (t <= 0) {
-                clearInterval(frenzyInterval);
-                isFrenzy = false;
-                vibe = 50; // Reset vibe after frenzy
-                document.getElementById("frenzyTimer").style.display = "none";
-            }
+        const interval = setInterval(() => {
+            t--; document.getElementById("seconds").innerText = t;
+            if (t <= 0) { clearInterval(interval); isFrenzy = false; vibe = 50; document.getElementById("frenzyTimer").style.display = "none"; }
         }, 1000);
     }
 
-    // Mission Win Condition
+    // Win Logic
     if (gameMode === "mission" && score >= 500) {
-        gameState = "welcome";
-        document.getElementById("welcomeScreen").style.display = "flex";
-        alert("MISSION COMPLETE! 🏆");
-        location.reload();
+        spawnConfetti();
+        gameState = "won";
+        setTimeout(() => { alert("MISSION COMPLETE! 🏆"); location.reload(); }, 1000);
     }
 
-    // Azul AI & Drip
-    azul.x -= (isFrenzy ? 9 : 3.5);
-    if (Math.random() > 0.82) droolDrops.push({ x: azul.x + 75, y: azul.y + 110, s: 5 + Math.random()*3 });
+    // Azul Drip
+    azul.x -= (isFrenzy ? 7 : 3);
+    if (Math.random() > 0.88) droolDrops.push({ x: azul.x + 50, y: azul.y + 80, s: 4 + Math.random()*2 });
 
-    if(azul.x < -250) {
+    if(azul.x < -150) {
         azul.x = canvas.width + 100;
         if(score > hiScore) { 
             hiScore = score; 
@@ -153,24 +188,22 @@ function update() {
         }
     }
 
-    // Drool Physics
+    // Drool/Slices Physics
     droolDrops.forEach((d, i) => {
         d.y += d.s;
         if (d.y > mochkil.y && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
             vibe = Math.max(0, vibe - (mochkil.state === "coma" ? 20 : 10));
             droolDrops.splice(i, 1);
         }
-        if (d.y > canvas.height) droolDrops.splice(i, 1);
     });
 
-    // Vertical Arc Throwing
     slices.forEach((s, i) => {
-        s.x += s.dx; s.y += s.dy; s.dy += 0.6; s.life--;
+        s.x += s.dx; s.y += s.dy; s.dy += 0.7; s.life--;
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
-            score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 8);
-            azul.x += 180; slices.splice(i, 1);
+            score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 10);
+            azul.x += 150; slices.splice(i, 1);
         }
-        if(s.life <= 0 || s.y > canvas.height) slices.splice(i, 1);
+        if(s.life <= 0) slices.splice(i, 1);
     });
 
     confetti.forEach((c, i) => { c.y += c.s; if(c.y > canvas.height) confetti.splice(i,1); });
@@ -182,50 +215,41 @@ function draw() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(images.bg.complete) ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
 
-    // Drool & Azul
-    ctx.font = "30px serif";
+    ctx.font = "20px serif";
     droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
-    if(isFrenzy) { ctx.shadowBlur = 25; ctx.shadowColor = "red"; }
+
+    if(isFrenzy) { ctx.shadowBlur = 15; ctx.shadowColor = "red"; }
     ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
     ctx.shadowBlur = 0;
 
-    // Mochkil
-    ctx.save();
     let img = images[mochkil.state] || images.idle;
     if(mochkil.facingEast && (mochkil.state === "walk" || mochkil.state === "eat")) {
-        ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
-        ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h);
+        ctx.save(); ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
+        ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h); ctx.restore();
     } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
-    ctx.restore();
 
-    // Slices
     slices.forEach(s => {
-        ctx.font = "50px serif"; ctx.fillText("🍰", s.x, s.y);
-        ctx.save(); ctx.globalAlpha = s.life/80; ctx.font = "bold 22px sans-serif";
-        ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
-        ctx.strokeText(s.phrase, s.x, s.y - 40); ctx.fillText(s.phrase, s.x, s.y - 40);
-        ctx.restore();
+        ctx.font = "30px serif"; ctx.fillText("🍰", s.x, s.y);
+        ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "white";
+        ctx.fillText(s.phrase, s.x, s.y - 20);
     });
 
     confetti.forEach(c => { ctx.fillStyle = c.color; ctx.fillRect(c.x, c.y, c.r, c.r); });
 }
 
-// Controls
+// Control Bindings
 const wake = () => { if(mochkil.state === "coma") mochkil.state = "idle"; };
-document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 35; mochkil.facingEast = false; mochkil.state = "walk"; });
-document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; });
-document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.state = "eat"; vibe = Math.min(100, vibe+3); score += 5; });
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 30; mochkil.facingEast = false; mochkil.state = "walk"; });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 30; mochkil.facingEast = true; mochkil.state = "walk"; });
+document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.state = "eat"; vibe = Math.min(100, vibe+5); score += 5; });
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
     e.preventDefault(); if(mochkil.state === "coma") return;
-    slices.push({ x: mochkil.x + 110, y: mochkil.y + 50, dx: mochkil.facingEast ? 9 : -9, dy: -22, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 80 }); 
+    slices.push({ x: mochkil.x + 70, y: mochkil.y + 30, dx: mochkil.facingEast ? 8 : -8, dy: -18, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 70 }); 
 });
 document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
+document.querySelectorAll("button.game-btn").forEach(btn => btn.addEventListener("touchend", () => { if(btn.id !== "comaBtn" && mochkil.state !== "coma") mochkil.state = "idle"; }));
 
-document.querySelectorAll("button.game-btn").forEach(btn => {
-    btn.addEventListener("touchend", () => { if(btn.id !== "comaBtn" && mochkil.state !== "coma") mochkil.state = "idle"; });
-});
-
-function gameLoop() { if(gameState === "playing") { update(); draw(); requestAnimationFrame(gameLoop); } }
+function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 </script>
 </body>
 </html>
