@@ -20,6 +20,7 @@
         margin-top: 10px;
         display: flex;
         gap: 10px;
+        flex-wrap: wrap;
     }
     button {
         font-size: 18px;
@@ -68,14 +69,15 @@ sprites.foodComa.src = "mochkil_food_coma.png";
 
 // === Game Variables ===
 let mochkilX = 350;
-let mochkilY = 400;
+const groundY = 300; // base ground level
+let mochkilY = groundY;
 let currentSprite = "idle";
 let facingEast = true;
 let currentSnack = "🍰"; // emoji snack
 const canvasWidth = canvas.width;
 const canvasHeight = canvas.height;
 
-// === Throwing Slices (Frenzy Mode) ===
+// === Throwing Slices ===
 let slices = []; 
 
 function throwSlice() {
@@ -95,20 +97,24 @@ function drawMochkil() {
     ctx.fillStyle = "#ffe8b3";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Adjust Mochkil Y for plop / normal
+    let drawY = mochkilY;
+    if(currentSprite === "foodComa") drawY += 30; // plop down
+
     // Mochkil sprite
     ctx.save();
     if(facingEast && (currentSprite === "walkLeft" || currentSprite === "eatLeft")){
-        ctx.translate(mochkilX + 100, mochkilY);
+        ctx.translate(mochkilX + 100, drawY);
         ctx.scale(-1, 1);
         ctx.drawImage(sprites[currentSprite], 0, 0);
     } else {
-        ctx.drawImage(sprites[currentSprite], mochkilX, mochkilY);
+        ctx.drawImage(sprites[currentSprite], mochkilX, drawY);
     }
     ctx.restore();
 
     // Emoji snack
     ctx.font = "40px serif";
-    ctx.fillText(currentSnack, mochkilX + 20, mochkilY + 20);
+    ctx.fillText(currentSnack, mochkilX + 20, drawY + 20);
 
     // Thrown slices
     slices.forEach(slice => {
@@ -153,7 +159,7 @@ document.querySelectorAll("button").forEach(btn => {
 // Canvas boundaries
 function clampPosition() {
     mochkilX = Math.max(0, Math.min(canvasWidth - 100, mochkilX));
-    mochkilY = Math.max(0, Math.min(canvasHeight - 100, mochkilY));
+    mochkilY = groundY;
 }
 
 // === Game Loop ===
