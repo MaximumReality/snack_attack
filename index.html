@@ -5,47 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Mochkil: Kitchen Chaos 2026</title>
     <style>
-        body {
-            margin: 0;
-            background-color: #000;
-            overflow: hidden;
-            touch-action: none;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        #gameCanvas { display: block; }
-        .frenzy-border { border: 10px solid red; animation: flash 0.5s infinite alternate; box-sizing: border-box; }
-        @keyframes flash { from { opacity: 1; } to { opacity: 0.5; } }
-
-        /* UI at the Top */
+        body { margin: 0; background-color: #222; overflow: hidden; touch-action: none; height: 100vh; font-family: sans-serif; }
+        #gameCanvas { display: block; background-color: #333; }
+        
         .ui-overlay {
-            position: absolute;
-            top: 10px; left: 0; width: 100%;
-            text-align: center;
-            pointer-events: none;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px #000;
-            z-index: 10;
+            position: absolute; top: 10px; width: 100%; text-align: center;
+            pointer-events: none; color: white; text-shadow: 2px 2px 4px #000; z-index: 10;
         }
         .controls {
-            position: absolute;
-            top: 70px; /* Positioned below stats */
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            padding: 0 10px;
-            box-sizing: border-box;
-            z-index: 10;
+            position: absolute; top: 80px; width: 100%;
+            display: flex; justify-content: space-around; z-index: 10;
         }
         button {
-            font-size: 24px; width: 65px; height: 65px;
-            border-radius: 50%; border: 3px solid #333;
-            background-color: #ffcc80; box-shadow: 0 4px #999;
+            font-size: 24px; width: 60px; height: 60px; border-radius: 50%;
+            border: 2px solid white; background: rgba(255,204,128,0.8);
         }
-        button:active { transform: translateY(2px); box-shadow: 0 2px #666; }
     </style>
 </head>
 <body>
@@ -53,7 +27,6 @@
 <div class="ui-overlay">
     Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span><br>
     Hunger: <span id="meterDisplay">0</span>%
-    <div id="frenzyTimer" style="display:none; color:red;">FRENZY: <span id="seconds">8</span>s</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -70,77 +43,125 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// === 1. Asset Setup with Error Handling ===
 const bgImage = new Image(); bgImage.src = "IMG_2515.png";
-const sprites = { idle: new Image(), walkLeft: new Image(), eatLeft: new Image(), foodComa: new Image() };
+const sprites = { 
+    idle: new Image(), 
+    walkLeft: new Image(), 
+    eatLeft: new Image(), 
+    foodComa: new Image() 
+};
 sprites.idle.src = "mochkil_idle.png";
 sprites.walkLeft.src = "mochkil_left.png";
 sprites.eatLeft.src = "mochkil_eat_left.png";
 sprites.foodComa.src = "mochkil_food_coma.png";
-const azulSprite = new Image(); azulSprite.src = "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png";
 
-let score = 0, snackMeter = 0, isFrenzy = false, dailyHighScore = localStorage.getItem('mochkil_hi_2026') || 0;
+const azulSprite = new Image(); 
+azulSprite.src = "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png";
+
+// === 2. Game Variables ===
+let score = 0, snackMeter = 0, isFrenzy = false;
+let dailyHighScore = localStorage.getItem('mochkil_hi_2026') || 0;
 document.getElementById("hiScoreDisplay").innerText = dailyHighScore;
-const snackPool = ["🍪", "🍩", "🍗", "🎂", "🍰", "🥟", "🍤"];
-let currentSnack = "🍪", slices = [], droolDrops = [];
 
-let mochkil = { x: 50, y: 0, w: 200, h: 200, state: "idle", facingEast: true };
-let azul = { x: 1000, y: 0, w: 140, h: 140, speed: 2.5 };
+let mochkil = { x: 50, y: 0, w: 180, h: 180, state: "idle", facingEast: true };
+let azul = { x: 800, y: 0, w: 120, h: 120, speed: 2 };
+let slices = [], droolDrops = [];
 
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-    // Anchor to absolute bottom
     mochkil.y = canvas.height - mochkil.h;
-    azul.y = canvas.height * 0.45;
+    azul.y = canvas.height * 0.4;
 }
 window.addEventListener('resize', resize);
 resize();
 
-function drawShadow(x, y, width) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(x + (width/2), y + mochkil.h - 5, width/3, 10, 0, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-    ctx.fill();
-    ctx.restore();
-}
-
+// === 3. Logic ===
 function update() {
-    azul.x -= azul.speed;
+    azul.x -= (isFrenzy ? 5 : 2);
     if (azul.x < -200) {
         azul.x = canvas.width + 150;
         if(score > dailyHighScore) {
             dailyHighScore = score;
             localStorage.setItem('mochkil_hi_2026', dailyHighScore);
-            document.getElementById("hiScoreDisplay").innerText = dailyHighScore;
         }
     }
-    // Logic for drool and slices remains same...
-    if (isFrenzy) azul.speed = 5.5; else azul.speed = 2.5;
+    
+    slices.forEach((s, i) => {
+        s.x += s.dx; s.life--;
+        if (s.x > azul.x && s.x < azul.x + azul.w) {
+            score += 25; azul.x += 100; slices.splice(i, 1);
+        }
+    });
+    
+    document.getElementById("scoreDisplay").innerText = score;
+    document.getElementById("meterDisplay").innerText = snackMeter;
 }
 
+// === 4. Drawing (The Fix) ===
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (bgImage.complete) ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+    // Fill background with a color just in case image fails
+    ctx.fillStyle = "#1a1a2e"; 
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Shadows
-    drawShadow(mochkil.x, mochkil.y, mochkil.w);
+    if (bgImage.complete && bgImage.naturalWidth !== 0) {
+        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+    }
 
-    // Mochkil
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(mochkil.x + 90, canvas.height - 10, 60, 15, 0, 0, Math.PI*2);
+    ctx.fillStyle = "rgba(0,0,0,0.4)";
+    ctx.fill();
+
+    // Draw Mochkil (with fallback circle)
     ctx.save();
-    if (mochkil.facingEast && (mochkil.state === "walkLeft" || mochkil.state === "eatLeft")) {
-        ctx.translate(mochkil.x + mochkil.w, mochkil.y);
-        ctx.scale(-1, 1);
-        ctx.drawImage(sprites[mochkil.state] || sprites.idle, 0, 0, mochkil.w, mochkil.h);
+    let currentImg = sprites[mochkil.state];
+    if (currentImg && currentImg.complete && currentImg.naturalWidth !== 0) {
+        if (mochkil.facingEast && (mochkil.state !== "idle")) {
+            ctx.translate(mochkil.x + mochkil.w, mochkil.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(currentImg, 0, 0, mochkil.w, mochkil.h);
+        } else {
+            ctx.drawImage(currentImg, mochkil.x, mochkil.y, mochkil.w, mochkil.h);
+        }
     } else {
-        ctx.drawImage(sprites[mochkil.state] || sprites.idle, mochkil.x, mochkil.y, mochkil.w, mochkil.h);
+        // Fallback: Blue Square if image is missing
+        ctx.fillStyle = "cyan";
+        ctx.fillRect(mochkil.x, mochkil.y, mochkil.w, mochkil.h);
     }
     ctx.restore();
 
-    // UI and other elements...
+    // Draw Azul
+    if (azulSprite.complete) {
+        ctx.drawImage(azulSprite, azul.x, azul.y, azul.w, azul.h);
+    }
+
+    // Draw Slices
+    ctx.font = "40px serif";
+    slices.forEach(s => ctx.fillText("🍰", s.x, s.y));
 }
 
-// ... Rest of controls and game loop ...
+// === 5. Controls ===
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.x -= 30; mochkil.facingEast = false; mochkil.state="walkLeft"; });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.x += 30; mochkil.facingEast = true; mochkil.state="walkLeft"; });
+document.getElementById("throwBtn").addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    slices.push({ x: mochkil.x + 50, y: mochkil.y + 50, dx: mochkil.facingEast ? 10 : -10, life: 100 });
+});
+document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); snackMeter += 10; score += 5; });
+
+document.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("touchend", () => { mochkil.state = "idle"; });
+});
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+gameLoop();
 </script>
 </body>
 </html>
