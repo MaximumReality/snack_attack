@@ -1,69 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Mochkil Snack Frenzy: Azulzilla Edition</title>
-<style>
-    body {
-        margin: 0;
-        background-color: #fef4e0;
-        font-family: 'Courier New', Courier, monospace;
-        overflow: hidden;
-        touch-action: none;
-        display: flex;
-        flex-direction: column;
-        height: 100vh;
-    }
-    #gameCanvas {
-        background-color: #ffe8b3;
-        display: block;
-    }
-    .frenzy-border {
-        border: 10px solid red;
-        animation: flash 0.5s infinite alternate;
-    }
-    @keyframes flash { from { opacity: 1; } to { opacity: 0.5; } }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mochkil Snack Frenzy: Azulzilla Edition</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #fef4e0;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            touch-action: none;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #gameCanvas {
+            background-color: #ffe8b3;
+            display: block;
+        }
+        .frenzy-border {
+            border: 10px solid red;
+            animation: flash 0.5s infinite alternate;
+            box-sizing: border-box;
+        }
+        @keyframes flash { from { opacity: 1; } to { opacity: 0.5; } }
 
-    .ui-overlay {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-        pointer-events: none;
-        font-weight: bold;
-        color: #333;
-        text-shadow: 1px 1px 0px #fff;
-    }
-    .controls {
-        position: absolute;
-        bottom: 20px;
-        width: 100%;
-        display: flex;
-        justify-content: space-around;
-        padding: 0 10px;
-        box-sizing: border-box;
-    }
-    button {
-        font-size: 24px;
-        padding: 15px;
-        border-radius: 50%;
-        border: 3px solid #333;
-        background-color: #ffcc80;
-        width: 70px;
-        height: 70px;
-    }
-    #frenzyTimer {
-        color: red;
-        font-size: 24px;
-        display: none;
-    }
-</style>
+        .ui-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            pointer-events: none;
+            font-weight: bold;
+            color: #333;
+            text-shadow: 1px 1px 0px #fff;
+            z-index: 10;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 10px;
+            box-sizing: border-box;
+            z-index: 10;
+        }
+        button {
+            font-size: 24px;
+            padding: 15px;
+            border-radius: 50%;
+            border: 3px solid #333;
+            background-color: #ffcc80;
+            width: 70px;
+            height: 70px;
+            box-shadow: 0 4px #999;
+        }
+        button:active {
+            background-color: #ffa726;
+            box-shadow: 0 2px #666;
+            transform: translateY(2px);
+        }
+        #frenzyTimer {
+            color: red;
+            font-size: 24px;
+            display: none;
+        }
+    </style>
 </head>
 <body>
 
 <div class="ui-overlay">
     Score: <span id="scoreDisplay">0</span><br>
     Hunger: <span id="meterDisplay">0</span>%<br>
+    High Score: <span id="hiScoreDisplay">0</span>
     <div id="frenzyTimer">FRENZY: <span id="seconds">8</span>s</div>
 </div>
 
@@ -91,7 +101,10 @@ resize();
 
 // === Assets ===
 const sprites = {
-    idle: new Image(), walkLeft: new Image(), eatLeft: new Image(), foodComa: new Image()
+    idle: new Image(),
+    walkLeft: new Image(),
+    eatLeft: new Image(),
+    foodComa: new Image()
 };
 sprites.idle.src = "mochkil_idle.png";
 sprites.walkLeft.src = "mochkil_left.png";
@@ -101,14 +114,16 @@ sprites.foodComa.src = "mochkil_food_coma.png";
 const azulSprite = new Image();
 azulSprite.src = "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png";
 
-// === Game Variables ===
+// === Variables ===
 let score = 0;
 let snackMeter = 0;
 let isFrenzy = false;
 let frenzyTimeLeft = 8;
+let dailyHighScore = localStorage.getItem('mochkil_hi_2026') || 0;
+document.getElementById("hiScoreDisplay").innerText = dailyHighScore;
+
 const snackPool = ["🍪", "🍩", "🍗", "🎂", "🍰", "🥟", "🍤"];
 let currentSnack = "🍪";
-
 let slices = [];
 let droolDrops = [];
 
@@ -122,72 +137,86 @@ let mochkil = {
 
 let azul = {
     x: canvas.width + 100,
-    y: canvas.height * 0.55,
+    y: canvas.height * 0.5,
     w: 100, h: 100,
     speed: 2
 };
 
+function getThrowPhrase() {
+    const phrases = ["SNACK ATTACK!", "YAAAS!", "Bussin’!", "Chef Energy!", "Boom!", "Flavor bomb!", "Take that!", "Shrimp Power! 🍤"];
+    return phrases[Math.floor(Math.random() * phrases.length)];
+}
+
 // === Logic ===
 function update() {
-    // 1. Azul Movement (Facing East, Floating West)
+    // Azul AI
     azul.x -= azul.speed;
-    if (azul.x < -150) {
+    if (azul.x < -200) {
         azul.x = canvas.width + 150;
-        // Randomize height slightly
-        azul.y = (canvas.height * 0.5) + (Math.random() * 100);
+        azul.y = (canvas.height * 0.4) + (Math.random() * 150);
+        if(score > dailyHighScore) {
+            dailyHighScore = score;
+            localStorage.setItem('mochkil_hi_2026', dailyHighScore);
+            document.getElementById("hiScoreDisplay").innerText = dailyHighScore;
+        }
     }
 
-    // 2. Drool Damage
-    if (isFrenzy && Math.random() > 0.92) {
-        droolDrops.push({ x: azul.x + 20, y: azul.y + 60, s: 6 });
+    // Drool Physics & Damage
+    if (isFrenzy && Math.random() > 0.90) {
+        droolDrops.push({ x: azul.x + 40, y: azul.y + 80, s: 7 });
     }
-    
     droolDrops.forEach((d, i) => {
         d.y += d.s;
-        // Collision with Mochkil
         if (d.y > mochkil.y && d.y < mochkil.y + mochkil.h && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
-            score = Math.max(0, score - 10);
+            score = Math.max(0, score - 15);
             droolDrops.splice(i, 1);
         }
         if (d.y > canvas.height) droolDrops.splice(i, 1);
     });
 
-    // 3. Throwing Logic
+    // Slices & Phrases
     slices.forEach((s, i) => {
         s.x += s.dx;
-        let azulHitBox = isFrenzy ? 180 : 100;
-        if (s.x > azul.x && s.x < azul.x + azulHitBox && s.y > azul.y && s.y < azul.y + azulHitBox) {
-            score += isFrenzy ? 50 : 20;
-            azul.x += 80; // Knockback
+        s.y += s.vy;
+        s.life--;
+        let hitBox = isFrenzy ? 180 : 100;
+        if (s.x > azul.x && s.x < azul.x + hitBox && s.y > azul.y && s.y < azul.y + hitBox) {
+            score += isFrenzy ? 100 : 25;
+            azul.x += 120;
             slices.splice(i, 1);
         }
+        if (s.life <= 0) slices.splice(i, 1);
     });
 
-    // 4. Frenzy Timer
     if (isFrenzy) {
         document.body.classList.add('frenzy-border');
+        azul.speed = 4.5;
     } else {
         document.body.classList.remove('frenzy-border');
+        azul.speed = 2;
     }
 
     document.getElementById("scoreDisplay").innerText = score;
     document.getElementById("meterDisplay").innerText = snackMeter;
 }
 
-// === Draw ===
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Floor
+    ctx.fillStyle = "#e0c090";
+    ctx.fillRect(0, canvas.height * 0.75, canvas.width, canvas.height * 0.25);
 
-    // Draw Azul (Facing East = Mirroring the sprite if it faces west)
+    // Draw Azul
     ctx.save();
     if (isFrenzy) {
         ctx.shadowBlur = 30; ctx.shadowColor = "red";
         ctx.filter = "brightness(1.3) hue-rotate(-30deg)";
-        ctx.translate(azul.x + 180, azul.y); // Scale center
-        ctx.scale(-1.8, 1.8); // Flipped and Big
+        ctx.translate(azul.x + 180, azul.y);
+        ctx.scale(-1.8, 1.8);
     } else {
         ctx.translate(azul.x + 100, azul.y);
-        ctx.scale(-1, 1); // Flipped to face East
+        ctx.scale(-1, 1);
     }
     ctx.drawImage(azulSprite, 0, 0, 100, 100);
     ctx.restore();
@@ -207,14 +236,24 @@ function draw() {
     }
     ctx.restore();
 
-    // Snack and Slices
+    // Slices & Phrases
+    slices.forEach(s => {
+        ctx.font = "40px serif";
+        ctx.fillText(s.emoji, s.x, s.y);
+        ctx.globalAlpha = s.life / 70;
+        let wobble = Math.sin(Date.now() / 100 + s.x) * 5;
+        ctx.font = "bold 18px sans-serif";
+        ctx.fillStyle = "#333";
+        ctx.fillText(s.phrase, s.x - 20 + wobble, s.y - 30);
+        ctx.globalAlpha = 1;
+    });
+
     ctx.font = "40px serif";
     ctx.fillText(currentSnack, mochkil.x + 30, mochkil.y + 40);
-    slices.forEach(s => ctx.fillText(s.emoji, s.x, s.y));
 }
 
-// === Button Handlers ===
-const startFrenzy = () => {
+// === Controls ===
+function startFrenzy() {
     isFrenzy = true;
     frenzyTimeLeft = 8;
     document.getElementById("frenzyTimer").style.display = "block";
@@ -228,7 +267,7 @@ const startFrenzy = () => {
             document.getElementById("frenzyTimer").style.display = "none";
         }
     }, 1000);
-};
+}
 
 document.getElementById("eatBtn").addEventListener("touchstart", (e) => {
     e.preventDefault();
@@ -240,19 +279,20 @@ document.getElementById("eatBtn").addEventListener("touchstart", (e) => {
 
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => {
     e.preventDefault();
+    if(mochkil.state === "foodComa") return;
     slices.push({
         x: mochkil.x + 50, y: mochkil.y + 40,
-        dx: mochkil.facingEast ? 10 : -10,
-        emoji: currentSnack
+        dx: mochkil.facingEast ? 12 : -12, vy: -1.5,
+        emoji: currentSnack, phrase: getThrowPhrase(), life: 70
     });
 });
 
-document.getElementById("leftBtn").addEventListener("touchstart", () => { mochkil.facingEast = false; mochkil.state = "walkLeft"; mochkil.x -= 20; });
-document.getElementById("rightBtn").addEventListener("touchstart", () => { mochkil.facingEast = true; mochkil.state = "walkLeft"; mochkil.x += 20; });
-document.getElementById("comaBtn").addEventListener("touchstart", () => { mochkil.state = "foodComa"; });
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.facingEast = false; mochkil.state = "walkLeft"; mochkil.x -= 25; });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.facingEast = true; mochkil.state = "walkLeft"; mochkil.x += 25; });
+document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "foodComa"; });
 
 document.querySelectorAll("button").forEach(btn => {
-    btn.addEventListener("touchend", () => { if(mochkil.state !== "foodComa") mochkil.state = "idle"; });
+    btn.addEventListener("touchend", () => { if (mochkil.state !== "foodComa") mochkil.state = "idle"; });
 });
 
 function gameLoop() {
