@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mochkil Snack Frenzy: Azulzilla Edition</title>
+    <title>Mochkil Snack Frenzy: Kitchen Chaos</title>
     <style>
         body {
             margin: 0;
-            background-color: #fef4e0;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: #000;
             overflow: hidden;
             touch-action: none;
             display: flex;
@@ -16,7 +15,6 @@
             height: 100vh;
         }
         #gameCanvas {
-            background-color: #ffe8b3;
             display: block;
         }
         .frenzy-border {
@@ -25,56 +23,37 @@
             box-sizing: border-box;
         }
         @keyframes flash { from { opacity: 1; } to { opacity: 0.5; } }
-
         .ui-overlay {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 10px; left: 10px;
             pointer-events: none;
+            font-family: 'Courier New', monospace;
             font-weight: bold;
-            color: #333;
-            text-shadow: 1px 1px 0px #fff;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
             z-index: 10;
         }
         .controls {
             position: absolute;
-            bottom: 20px;
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            padding: 0 10px;
-            box-sizing: border-box;
+            bottom: 20px; width: 100%;
+            display: flex; justify-content: space-around;
+            padding: 0 10px; box-sizing: border-box;
             z-index: 10;
         }
         button {
-            font-size: 24px;
-            padding: 15px;
-            border-radius: 50%;
-            border: 3px solid #333;
-            background-color: #ffcc80;
-            width: 70px;
-            height: 70px;
-            box-shadow: 0 4px #999;
+            font-size: 24px; width: 70px; height: 70px;
+            border-radius: 50%; border: 3px solid #333;
+            background-color: #ffcc80; box-shadow: 0 4px #999;
         }
-        button:active {
-            background-color: #ffa726;
-            box-shadow: 0 2px #666;
-            transform: translateY(2px);
-        }
-        #frenzyTimer {
-            color: red;
-            font-size: 24px;
-            display: none;
-        }
+        button:active { transform: translateY(2px); box-shadow: 0 2px #666; }
     </style>
 </head>
 <body>
 
 <div class="ui-overlay">
-    Score: <span id="scoreDisplay">0</span><br>
-    Hunger: <span id="meterDisplay">0</span>%<br>
-    High Score: <span id="hiScoreDisplay">0</span>
-    <div id="frenzyTimer">FRENZY: <span id="seconds">8</span>s</div>
+    Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span><br>
+    Hunger: <span id="meterDisplay">0</span>%
+    <div id="frenzyTimer" style="display:none; color:red;">FRENZY: <span id="seconds">8</span>s</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -91,20 +70,12 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// === Responsive Canvas ===
-function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
+// === Asset Loading ===
+const bgImage = new Image();
+bgImage.src = "IMG_2515.png"; // Your kitchen photo
 
-// === Assets ===
 const sprites = {
-    idle: new Image(),
-    walkLeft: new Image(),
-    eatLeft: new Image(),
-    foodComa: new Image()
+    idle: new Image(), walkLeft: new Image(), eatLeft: new Image(), foodComa: new Image()
 };
 sprites.idle.src = "mochkil_idle.png";
 sprites.walkLeft.src = "mochkil_left.png";
@@ -115,45 +86,32 @@ const azulSprite = new Image();
 azulSprite.src = "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png";
 
 // === Variables ===
-let score = 0;
-let snackMeter = 0;
-let isFrenzy = false;
-let frenzyTimeLeft = 8;
+let score = 0, snackMeter = 0, isFrenzy = false, frenzyTimeLeft = 8;
 let dailyHighScore = localStorage.getItem('mochkil_hi_2026') || 0;
 document.getElementById("hiScoreDisplay").innerText = dailyHighScore;
 
 const snackPool = ["🍪", "🍩", "🍗", "🎂", "🍰", "🥟", "🍤"];
-let currentSnack = "🍪";
-let slices = [];
-let droolDrops = [];
+let currentSnack = "🍪", slices = [], droolDrops = [];
 
-let mochkil = {
-    x: 50,
-    y: canvas.height * 0.6,
-    w: 120, h: 120,
-    state: "idle",
-    facingEast: true
-};
+let mochkil = { x: 50, y: 0, w: 140, h: 140, state: "idle", facingEast: true };
+let azul = { x: 1000, y: 0, w: 110, h: 110, speed: 2 };
 
-let azul = {
-    x: canvas.width + 100,
-    y: canvas.height * 0.5,
-    w: 100, h: 100,
-    speed: 2
-};
-
-function getThrowPhrase() {
-    const phrases = ["SNACK ATTACK!", "YAAAS!", "Bussin’!", "Chef Energy!", "Boom!", "Flavor bomb!", "Take that!", "Shrimp Power! 🍤"];
-    return phrases[Math.floor(Math.random() * phrases.length)];
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // Keep character on the "floor" relative to screen size
+    mochkil.y = canvas.height * 0.65;
+    azul.y = canvas.height * 0.55;
 }
+window.addEventListener('resize', resize);
+resize();
 
-// === Logic ===
+// === Game Logic ===
 function update() {
-    // Azul AI
     azul.x -= azul.speed;
     if (azul.x < -200) {
         azul.x = canvas.width + 150;
-        azul.y = (canvas.height * 0.4) + (Math.random() * 150);
+        azul.y = (canvas.height * 0.45) + (Math.random() * 100);
         if(score > dailyHighScore) {
             dailyHighScore = score;
             localStorage.setItem('mochkil_hi_2026', dailyHighScore);
@@ -161,10 +119,8 @@ function update() {
         }
     }
 
-    // Drool Physics & Damage
-    if (isFrenzy && Math.random() > 0.90) {
-        droolDrops.push({ x: azul.x + 40, y: azul.y + 80, s: 7 });
-    }
+    if (isFrenzy && Math.random() > 0.90) droolDrops.push({ x: azul.x + 40, y: azul.y + 80, s: 7 });
+    
     droolDrops.forEach((d, i) => {
         d.y += d.s;
         if (d.y > mochkil.y && d.y < mochkil.y + mochkil.h && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
@@ -174,11 +130,8 @@ function update() {
         if (d.y > canvas.height) droolDrops.splice(i, 1);
     });
 
-    // Slices & Phrases
     slices.forEach((s, i) => {
-        s.x += s.dx;
-        s.y += s.vy;
-        s.life--;
+        s.x += s.dx; s.y += s.vy; s.life--;
         let hitBox = isFrenzy ? 180 : 100;
         if (s.x > azul.x && s.x < azul.x + hitBox && s.y > azul.y && s.y < azul.y + hitBox) {
             score += isFrenzy ? 100 : 25;
@@ -190,10 +143,10 @@ function update() {
 
     if (isFrenzy) {
         document.body.classList.add('frenzy-border');
-        azul.speed = 4.5;
+        azul.speed = 5;
     } else {
         document.body.classList.remove('frenzy-border');
-        azul.speed = 2;
+        azul.speed = 2.5;
     }
 
     document.getElementById("scoreDisplay").innerText = score;
@@ -203,9 +156,10 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Floor
-    ctx.fillStyle = "#e0c090";
-    ctx.fillRect(0, canvas.height * 0.75, canvas.width, canvas.height * 0.25);
+    // Draw Static Background
+    if (bgImage.complete) {
+        ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
+    }
 
     // Draw Azul
     ctx.save();
@@ -236,34 +190,31 @@ function draw() {
     }
     ctx.restore();
 
-    // Slices & Phrases
+    // Slices
     slices.forEach(s => {
         ctx.font = "40px serif";
         ctx.fillText(s.emoji, s.x, s.y);
         ctx.globalAlpha = s.life / 70;
-        let wobble = Math.sin(Date.now() / 100 + s.x) * 5;
         ctx.font = "bold 18px sans-serif";
-        ctx.fillStyle = "#333";
-        ctx.fillText(s.phrase, s.x - 20 + wobble, s.y - 30);
+        ctx.fillStyle = "white";
+        ctx.fillText(s.phrase, s.x - 20, s.y - 30);
         ctx.globalAlpha = 1;
     });
 
     ctx.font = "40px serif";
-    ctx.fillText(currentSnack, mochkil.x + 30, mochkil.y + 40);
+    ctx.fillText(currentSnack, mochkil.x + 40, mochkil.y + 50);
 }
 
 // === Controls ===
 function startFrenzy() {
-    isFrenzy = true;
-    frenzyTimeLeft = 8;
+    isFrenzy = true; frenzyTimeLeft = 8;
     document.getElementById("frenzyTimer").style.display = "block";
     let timer = setInterval(() => {
         frenzyTimeLeft--;
         document.getElementById("seconds").innerText = frenzyTimeLeft;
         if (frenzyTimeLeft <= 0) {
             clearInterval(timer);
-            isFrenzy = false;
-            snackMeter = 0;
+            isFrenzy = false; snackMeter = 0;
             document.getElementById("frenzyTimer").style.display = "none";
         }
     }, 1000);
@@ -281,9 +232,9 @@ document.getElementById("throwBtn").addEventListener("touchstart", (e) => {
     e.preventDefault();
     if(mochkil.state === "foodComa") return;
     slices.push({
-        x: mochkil.x + 50, y: mochkil.y + 40,
+        x: mochkil.x + 60, y: mochkil.y + 50,
         dx: mochkil.facingEast ? 12 : -12, vy: -1.5,
-        emoji: currentSnack, phrase: getThrowPhrase(), life: 70
+        emoji: currentSnack, phrase: "YUM!", life: 70
     });
 });
 
