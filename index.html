@@ -11,7 +11,6 @@
             justify-content: center; align-items: center;
         }
 
-        /* The Arcade Cabinet - Base Layer */
         #arcadeContainer {
             position: relative;
             width: 100vw; height: 100vh;
@@ -20,39 +19,42 @@
             z-index: 1;
         }
 
-        /* Your New Perfect Dimensions */
+        /* Your Perfect Dimensions */
         #gameScreen {
             position: absolute;
-            top: 37%; 
-            left: 14%; 
-            width: 72%; 
-            height: 36%;
-            background: #000;
-            z-index: 10;
-            overflow: hidden;
-            border-radius: 4px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            top: 37%; left: 14%; width: 72%; height: 36%;
+            background: #000; z-index: 10; overflow: hidden;
+        }
+
+        /* SCANLINE EFFECT */
+        #gameScreen::after {
+            content: " ";
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 3px, 3px 100%;
+            pointer-events: none;
+            z-index: 30;
         }
 
         #gameCanvas { width: 100%; height: 100%; display: block; }
 
         .ui-top {
-            position: absolute; top: 10px; width: 100%; text-align: center;
-            color: #0f0; font-family: 'Courier New', monospace; font-size: 14px;
+            position: absolute; top: 8px; width: 100%; text-align: center;
+            color: #0f0; font-family: 'Courier New', monospace; font-size: 12px;
             text-shadow: 2px 2px #000; z-index: 20; pointer-events: none;
         }
 
         .controls {
             position: absolute; bottom: 8%; width: 100%;
-            display: flex; justify-content: space-around; z-index: 30;
+            display: flex; justify-content: space-around; z-index: 40;
         }
 
         button.game-btn {
-            font-size: 26px; width: 64px; height: 64px; border-radius: 50%;
-            border: 3px solid #0f0; background: rgba(0,0,0,0.95); color: #0f0;
+            font-size: 26px; width: 62px; height: 62px; border-radius: 50%;
+            border: 3px solid #0f0; background: rgba(0,0,0,0.9); color: #0f0;
             box-shadow: 0 0 15px #0f0;
         }
-        button.game-btn:active { background: #0f0; color: #000; scale: 0.95; }
 
         #welcomeScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -62,7 +64,7 @@
         
         .menu-btn {
             padding: 15px 30px; margin: 10px; background: #0f0; color: #000; 
-            border: none; border-radius: 8px; font-weight: bold; cursor: pointer;
+            border: none; border-radius: 5px; font-weight: bold; cursor: pointer;
         }
     </style>
 </head>
@@ -71,14 +73,14 @@
 <div id="arcadeContainer">
     <div id="gameScreen">
         <div id="welcomeScreen">
-            <h1 style="color:#0f0; margin-bottom:15px; font-size: 24px;">MOCHKIL 2026</h1>
+            <h2 style="color:#0f0; margin-bottom:10px;">MOCHKIL 2026</h2>
             <button class="menu-btn" onclick="startGame('mission')">MISSION: 500</button>
             <button class="menu-btn" onclick="startGame('endless')">ENDLESS</button>
         </div>
 
         <div id="gameUI" class="ui-top" style="display:none;">
             SCORE: <span id="scoreDisplay">0</span> | HI: <span id="hiScoreDisplay">0</span>
-            <div style="width:100px; height:6px; border:1px solid #0f0; margin:5px auto; overflow:hidden;">
+            <div style="width:100px; height:6px; border:1px solid #0f0; margin:4px auto; overflow:hidden;">
                 <div id="vibeBar" style="width:50%; height:100%; background:#0f0;"></div>
             </div>
         </div>
@@ -111,9 +113,8 @@ let gameState = "welcome", gameMode = "", score = 0, vibe = 50;
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
-// Sizes tuned for the 36% height screen
-let mochkil = { x: 40, y: 0, w: 125, h: 125, state: "idle", facingEast: true };
-let azul = { x: 450, y: 25, w: 95, h: 95 }; 
+let mochkil = { x: 40, y: 0, w: 120, h: 120, state: "idle", facingEast: true };
+let azul = { x: 400, y: 20, w: 90, h: 90 }; 
 let slices = [], droolDrops = [];
 
 function resize() {
@@ -121,7 +122,7 @@ function resize() {
     canvas.width = rect.width;
     canvas.height = rect.height;
     mochkil.y = canvas.height - mochkil.h;
-    azul.y = canvas.height * 0.08; 
+    azul.y = canvas.height * 0.1; 
 }
 window.addEventListener('resize', resize);
 setTimeout(resize, 200);
@@ -137,19 +138,18 @@ function startGame(mode) {
 function update() {
     if(gameState !== "playing") return;
 
-    // Daily High Score logic
+    // High Score logic saved for your daily 2026 goal
     if(score > hiScore) {
         hiScore = score;
         localStorage.setItem('moch_hi_26', hiScore);
         document.getElementById("hiScoreDisplay").innerText = hiScore;
         document.getElementById("scoreDisplay").style.color = "#0f0";
-        document.getElementById("scoreDisplay").style.textShadow = "0 0 10px #0f0";
     }
 
     if (gameMode === "mission" && score >= 500) { alert("🏆 MISSION COMPLETE!"); location.reload(); }
 
     azul.x -= 3.3;
-    if (Math.random() > 0.88) droolDrops.push({ x: azul.x + 45, y: azul.y + 60, s: 4.5 });
+    if (Math.random() > 0.88) droolDrops.push({ x: azul.x + 40, y: azul.y + 60, s: 4.5 });
     if(azul.x < -120) azul.x = canvas.width + 100;
 
     droolDrops.forEach((d, i) => {
@@ -161,12 +161,12 @@ function update() {
     });
 
     slices.forEach((s, i) => {
-        s.x += s.dx; s.y += s.dy; s.dy += 0.7; // Gravity
+        s.x += s.dx; s.y += s.dy; s.dy += 0.75; 
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
             score += 25; vibe = Math.min(100, vibe + 12);
             azul.x += 160; slices.splice(i, 1);
         }
-        if(s.y > canvas.height || s.y < -100) slices.splice(i, 1);
+        if(s.y > canvas.height) slices.splice(i, 1);
     });
 
     document.getElementById("scoreDisplay").innerText = score;
@@ -187,9 +187,10 @@ function draw() {
         ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h); ctx.restore();
     } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
 
-    slices.forEach(s => { ctx.font = "28px serif"; ctx.fillText("🍰", s.x, s.y); });
+    slices.forEach(s => { ctx.font = "26px serif"; ctx.fillText("🍰", s.x, s.y); });
 }
 
+// Logic for Plop and North Throw
 const wake = () => { if(mochkil.state === "coma") mochkil.state = "idle"; };
 document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 30; mochkil.facingEast = false; mochkil.state = "walk"; });
 document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 30; mochkil.facingEast = true; mochkil.state = "walk"; });
@@ -197,8 +198,7 @@ document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.prev
 document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
     e.preventDefault(); if(mochkil.state === "coma") return;
-    // Dynamic throw based on facing direction
-    slices.push({ x: mochkil.x + 60, y: mochkil.y + 30, dx: mochkil.facingEast ? 10 : -10, dy: -26 }); 
+    slices.push({ x: mochkil.x + 60, y: mochkil.y + 30, dx: mochkil.facingEast ? 10 : -10, dy: -24 }); 
 });
 
 document.querySelectorAll("button.game-btn").forEach(btn => {
