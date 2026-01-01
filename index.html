@@ -8,7 +8,6 @@
         body { margin: 0; background-color: #222; overflow: hidden; touch-action: none; height: 100vh; font-family: 'Courier New', monospace; }
         #gameCanvas { display: block; }
         
-        /* Interactive Title Screen */
         #welcomeScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: url('IMG_2523.png') no-repeat center center;
@@ -21,7 +20,7 @@
             padding: 20px 40px; margin: 15px; font-size: 22px; font-weight: bold;
             background: rgba(255, 204, 128, 0.95); border: 4px solid #333; 
             border-radius: 15px; color: #333; transition: all 0.1s;
-            box-shadow: 0 6px #666; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 6px #666; cursor: pointer;
         }
         .menu-btn:active { transform: translateY(4px); box-shadow: 0 2px #333; background: #ffa726; }
 
@@ -39,25 +38,23 @@
             font-size: 28px; width: 65px; height: 65px; border-radius: 50%;
             border: 3px solid #333; background: #ffcc80; box-shadow: 0 4px #999;
         }
-        button.game-btn:active { transform: translateY(2px); box-shadow: 0 2px #666; }
 
         #vibeContainer { width: 180px; height: 10px; background: #444; margin: 5px auto; border-radius: 5px; overflow: hidden; border: 1px solid #fff; }
         #vibeBar { width: 50%; height: 100%; background: cyan; transition: width 0.2s; }
-        
-        #frenzyTimer { color: #ff4444; font-weight: bold; font-size: 20px; }
+        #frenzyTimer { color: #ff4444; font-weight: bold; font-size: 20px; display: none; }
     </style>
 </head>
 <body>
 
 <div id="welcomeScreen">
-    <button class="menu-btn" onclick="startGame('mission')">Mission Mode</button>
+    <button class="menu-btn" onclick="startGame('mission')">Mission Mode (500 pts)</button>
     <button class="menu-btn" onclick="startGame('endless')">Endless Play</button>
 </div>
 
 <div id="gameUI" class="ui-top" style="display:none;">
     Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span>
     <div id="vibeContainer"><div id="vibeBar"></div></div>
-    <div id="frenzyTimer" style="display:none;">FRENZY: <span id="seconds">8</span>s</div>
+    <div id="frenzyTimer">FRENZY: <span id="seconds">8</span>s</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -74,26 +71,21 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// === Assets ===
 const assets = { 
-    bg: "IMG_2515.png", 
-    idle: "mochkil_idle.png", 
-    walk: "mochkil_left.png", 
-    eat: "mochkil_eat_left.png", 
-    coma: "mochkil_food_coma.png", 
+    bg: "IMG_2515.png", idle: "mochkil_idle.png", walk: "mochkil_left.png", 
+    eat: "mochkil_eat_left.png", coma: "mochkil_food_coma.png", 
     azul: "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png" 
 };
 const images = {};
 for(let k in assets) { images[k]=new Image(); images[k].src=assets[k]; }
 
-// === Game Variables ===
 let gameState = "welcome", gameMode = "", score = 0, vibe = 50, isFrenzy = false;
 let vibeShield = false, shieldTimer = 0, confetti = [];
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
 let mochkil = { x: 100, y: 0, w: 220, h: 220, state: "idle", facingEast: true };
-let azul = { x: 800, y: 120, w: 150, h: 150, speed: 2.8 }; 
+let azul = { x: 800, y: 120, w: 150, h: 150, speed: 3 }; 
 let slices = [], droolDrops = [];
 const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!", "FR FR!"];
 
@@ -104,43 +96,60 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+function spawnConfetti() {
+    for(let i=0; i<60; i++) {
+        confetti.push({ x: Math.random()*canvas.width, y: -20, r: Math.random()*6+4, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: Math.random()*4+2 });
+    }
+}
+
 function startGame(mode) {
-    gameMode = mode; gameState = "playing";
+    gameMode = mode; score = 0; vibe = 50; gameState = "playing";
     document.getElementById("welcomeScreen").style.display = "none";
     document.getElementById("gameUI").style.display = "block";
     document.getElementById("controls").style.display = "flex";
     requestAnimationFrame(gameLoop);
 }
 
-function spawnConfetti() {
-    for(let i=0; i<50; i++) {
-        confetti.push({ x: Math.random()*canvas.width, y: -10, r: Math.random()*6+2, d: Math.random()*canvas.height, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: Math.random()*3+2 });
-    }
-}
-
 function update() {
     if(gameState !== "playing") return;
 
-    // Shield Logic
-    if (vibe >= 100 && !vibeShield) {
-        vibeShield = true; shieldTimer = 300; 
-    }
-    if (vibeShield) {
-        shieldTimer--;
-        if (shieldTimer <= 0) { vibeShield = false; vibe = 50; }
+    // Frenzy Logic (Vibe-based)
+    if (vibe >= 100 && !isFrenzy) {
+        isFrenzy = true;
+        document.getElementById("frenzyTimer").style.display = "block";
+        let t = 8;
+        document.getElementById("seconds").innerText = t;
+        const frenzyInterval = setInterval(() => {
+            t--;
+            document.getElementById("seconds").innerText = t;
+            if (t <= 0) {
+                clearInterval(frenzyInterval);
+                isFrenzy = false;
+                vibe = 50; // Reset vibe after frenzy
+                document.getElementById("frenzyTimer").style.display = "none";
+            }
+        }, 1000);
     }
 
-    // Azul AI & The Constant Drip
-    azul.x -= (isFrenzy ? 8.5 : 3.2);
-    if (Math.random() > 0.85) droolDrops.push({ x: azul.x + 70, y: azul.y + 110, s: 5 + Math.random()*3 });
+    // Mission Win Condition
+    if (gameMode === "mission" && score >= 500) {
+        gameState = "welcome";
+        document.getElementById("welcomeScreen").style.display = "flex";
+        alert("MISSION COMPLETE! 🏆");
+        location.reload();
+    }
+
+    // Azul AI & Drip
+    azul.x -= (isFrenzy ? 9 : 3.5);
+    if (Math.random() > 0.82) droolDrops.push({ x: azul.x + 75, y: azul.y + 110, s: 5 + Math.random()*3 });
 
     if(azul.x < -250) {
-        azul.x = canvas.width + 150;
+        azul.x = canvas.width + 100;
         if(score > hiScore) { 
             hiScore = score; 
             localStorage.setItem('moch_hi_26', hiScore); 
             document.getElementById("hiScoreDisplay").innerText = hiScore;
-            spawnConfetti(); // Beat the daily high score celebration!
+            spawnConfetti();
         }
     }
 
@@ -148,16 +157,15 @@ function update() {
     droolDrops.forEach((d, i) => {
         d.y += d.s;
         if (d.y > mochkil.y && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
-            if(!vibeShield) vibe = Math.max(0, vibe - 10);
+            vibe = Math.max(0, vibe - (mochkil.state === "coma" ? 20 : 10));
             droolDrops.splice(i, 1);
         }
         if (d.y > canvas.height) droolDrops.splice(i, 1);
     });
 
-    // Vertical Arc Physics
+    // Vertical Arc Throwing
     slices.forEach((s, i) => {
-        s.x += s.dx; s.y += s.dy; s.dy += 0.6; // Gravity
-        s.life--;
+        s.x += s.dx; s.y += s.dy; s.dy += 0.6; s.life--;
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
             score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 8);
             azul.x += 180; slices.splice(i, 1);
@@ -165,39 +173,29 @@ function update() {
         if(s.life <= 0 || s.y > canvas.height) slices.splice(i, 1);
     });
 
-    // Confetti logic
     confetti.forEach((c, i) => { c.y += c.s; if(c.y > canvas.height) confetti.splice(i,1); });
-
     document.getElementById("scoreDisplay").innerText = score;
-    const bar = document.getElementById("vibeBar");
-    bar.style.width = vibe + "%";
-    bar.style.background = vibeShield ? "gold" : "cyan";
+    document.getElementById("vibeBar").style.width = vibe + "%";
 }
 
 function draw() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(images.bg.complete) ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
 
-    // Drool
+    // Drool & Azul
     ctx.font = "30px serif";
     droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
-
-    // Azul (Drip King)
     if(isFrenzy) { ctx.shadowBlur = 25; ctx.shadowColor = "red"; }
     ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
     ctx.shadowBlur = 0;
 
     // Mochkil
     ctx.save();
-    if(vibeShield) { ctx.shadowBlur = 20; ctx.shadowColor = "gold"; }
     let img = images[mochkil.state] || images.idle;
     if(mochkil.facingEast && (mochkil.state === "walk" || mochkil.state === "eat")) {
         ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
         ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h);
-    } else {
-        ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h);
-    }
-    if(vibeShield) { ctx.font = "50px serif"; ctx.fillText("👨‍🍳", mochkil.x + 80, mochkil.y - 10); }
+    } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
     ctx.restore();
 
     // Slices
@@ -209,26 +207,17 @@ function draw() {
         ctx.restore();
     });
 
-    // Confetti
     confetti.forEach(c => { ctx.fillStyle = c.color; ctx.fillRect(c.x, c.y, c.r, c.r); });
 }
 
-// === Controls ===
-const move = (dir) => {
-    if(mochkil.state === "coma") mochkil.state = "idle";
-    if(dir === "L") { mochkil.x -= 35; mochkil.facingEast = false; mochkil.state = "walk"; }
-    if(dir === "R") { mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; }
-};
-
-document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); move("L"); });
-document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); move("R"); });
-document.getElementById("eatBtn").addEventListener("touchstart", (e) => { 
-    e.preventDefault(); if(mochkil.state === "coma") mochkil.state = "idle";
-    mochkil.state = "eat"; vibe = Math.min(100, vibe+2); 
-});
+// Controls
+const wake = () => { if(mochkil.state === "coma") mochkil.state = "idle"; };
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 35; mochkil.facingEast = false; mochkil.state = "walk"; });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; });
+document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.state = "eat"; vibe = Math.min(100, vibe+3); score += 5; });
 document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
     e.preventDefault(); if(mochkil.state === "coma") return;
-    slices.push({ x: mochkil.x + 110, y: mochkil.y + 50, dx: mochkil.facingEast ? 9 : -9, dy: -20, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 80 }); 
+    slices.push({ x: mochkil.x + 110, y: mochkil.y + 50, dx: mochkil.facingEast ? 9 : -9, dy: -22, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 80 }); 
 });
 document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
 
