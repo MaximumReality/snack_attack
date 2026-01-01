@@ -19,7 +19,6 @@
             z-index: 1;
         }
 
-        /* Your Perfect Dimensions */
         #gameScreen {
             position: absolute;
             top: 37%; left: 14%; width: 72%; height: 36%;
@@ -30,14 +29,30 @@
         #gameScreen::after {
             content: " ";
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            background-size: 100% 3px, 3px 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 3px;
             pointer-events: none;
             z-index: 30;
+            opacity: 0.4;
         }
 
         #gameCanvas { width: 100%; height: 100%; display: block; }
+
+        /* PLAYER 1 BLINKING EFFECT */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .player-blink {
+            color: #f00; /* Classic Arcade Red */
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+            animation: blink 0.8s infinite;
+        }
 
         .ui-top {
             position: absolute; top: 8px; width: 100%; text-align: center;
@@ -58,13 +73,14 @@
 
         #welcomeScreen {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); display: flex; flex-direction: column;
+            background: rgba(0,0,0,0.92); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 100;
         }
         
         .menu-btn {
-            padding: 15px 30px; margin: 10px; background: #0f0; color: #000; 
+            padding: 12px 25px; margin: 8px; background: #0f0; color: #000; 
             border: none; border-radius: 5px; font-weight: bold; cursor: pointer;
+            font-family: 'Courier New', monospace;
         }
     </style>
 </head>
@@ -73,9 +89,11 @@
 <div id="arcadeContainer">
     <div id="gameScreen">
         <div id="welcomeScreen">
-            <h2 style="color:#0f0; margin-bottom:10px;">MOCHKIL 2026</h2>
-            <button class="menu-btn" onclick="startGame('mission')">MISSION: 500</button>
-            <button class="menu-btn" onclick="startGame('endless')">ENDLESS</button>
+            <div class="player-blink">1P READY</div>
+            <h2 style="color:#0f0; margin: 5px 0 15px 0; font-family: 'Courier New';">MOCHKIL 2026</h2>
+            <button class="menu-btn" onclick="startGame('mission')">START MISSION</button>
+            <button class="menu-btn" onclick="startGame('endless')">ENDLESS MODE</button>
+            <div style="color:#0f0; font-size: 10px; margin-top: 10px;">HI-SCORE: <span id="welcomeHiScore">0</span></div>
         </div>
 
         <div id="gameUI" class="ui-top" style="display:none;">
@@ -112,6 +130,7 @@ for(let k in assets) { images[k]=new Image(); images[k].src=assets[k]; }
 let gameState = "welcome", gameMode = "", score = 0, vibe = 50;
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
+document.getElementById("welcomeHiScore").innerText = hiScore;
 
 let mochkil = { x: 40, y: 0, w: 120, h: 120, state: "idle", facingEast: true };
 let azul = { x: 400, y: 20, w: 90, h: 90 }; 
@@ -138,12 +157,11 @@ function startGame(mode) {
 function update() {
     if(gameState !== "playing") return;
 
-    // High Score logic saved for your daily 2026 goal
     if(score > hiScore) {
         hiScore = score;
         localStorage.setItem('moch_hi_26', hiScore);
         document.getElementById("hiScoreDisplay").innerText = hiScore;
-        document.getElementById("scoreDisplay").style.color = "#0f0";
+        document.getElementById("scoreDisplay").style.color = "#f00"; // Glow Red when breaking record!
     }
 
     if (gameMode === "mission" && score >= 500) { alert("🏆 MISSION COMPLETE!"); location.reload(); }
@@ -166,7 +184,6 @@ function update() {
             score += 25; vibe = Math.min(100, vibe + 12);
             azul.x += 160; slices.splice(i, 1);
         }
-        if(s.y > canvas.height) slices.splice(i, 1);
     });
 
     document.getElementById("scoreDisplay").innerText = score;
@@ -176,21 +193,17 @@ function update() {
 function draw() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     if(images.bg.complete) ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
-
     ctx.font = "20px serif";
     droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
     ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
-
     let img = images[mochkil.state] || images.idle;
     if(mochkil.facingEast && (mochkil.state === "walk" || mochkil.state === "eat")) {
         ctx.save(); ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
         ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h); ctx.restore();
     } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
-
     slices.forEach(s => { ctx.font = "26px serif"; ctx.fillText("🍰", s.x, s.y); });
 }
 
-// Logic for Plop and North Throw
 const wake = () => { if(mochkil.state === "coma") mochkil.state = "idle"; };
 document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x -= 30; mochkil.facingEast = false; mochkil.state = "walk"; });
 document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); wake(); mochkil.x += 30; mochkil.facingEast = true; mochkil.state = "walk"; });
