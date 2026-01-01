@@ -17,18 +17,13 @@
             justify-content: center; align-items: center; z-index: 20;
         }
         
-        /* Menu Buttons with Hover/Active Feedback */
         .menu-btn {
             padding: 20px 40px; margin: 15px; font-size: 22px; font-weight: bold;
-            background: rgba(255, 204, 128, 0.9); border: 4px solid #333; 
+            background: rgba(255, 204, 128, 0.95); border: 4px solid #333; 
             border-radius: 15px; color: #333; transition: all 0.1s;
-            box-shadow: 0 6px #666; cursor: pointer;
+            box-shadow: 0 6px #666; cursor: pointer; text-transform: uppercase;
         }
-        .menu-btn:active {
-            transform: translateY(4px);
-            box-shadow: 0 2px #333;
-            background: #ffa726;
-        }
+        .menu-btn:active { transform: translateY(4px); box-shadow: 0 2px #333; background: #ffa726; }
 
         .ui-top {
             position: absolute; top: 10px; width: 100%; text-align: center;
@@ -36,7 +31,7 @@
         }
 
         .controls {
-            position: absolute; top: 100px; width: 100%;
+            position: absolute; top: 110px; width: 100%;
             display: flex; justify-content: space-around; z-index: 10;
         }
 
@@ -45,19 +40,24 @@
             border: 3px solid #333; background: #ffcc80; box-shadow: 0 4px #999;
         }
         button.game-btn:active { transform: translateY(2px); box-shadow: 0 2px #666; }
+
+        #vibeContainer { width: 180px; height: 10px; background: #444; margin: 5px auto; border-radius: 5px; overflow: hidden; border: 1px solid #fff; }
+        #vibeBar { width: 50%; height: 100%; background: cyan; transition: width 0.2s; }
+        
+        #frenzyTimer { color: #ff4444; font-weight: bold; font-size: 20px; }
     </style>
 </head>
 <body>
 
 <div id="welcomeScreen">
-    <button class="menu-btn" onclick="startGame('mission')">MISSION MODE</button>
-    <button class="menu-btn" onclick="startGame('endless')">ENDLESS PLAY</button>
+    <button class="menu-btn" onclick="startGame('mission')">Mission Mode</button>
+    <button class="menu-btn" onclick="startGame('endless')">Endless Play</button>
 </div>
 
 <div id="gameUI" class="ui-top" style="display:none;">
-    Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span><br>
-    Vibe: <div style="width:150px; height:8px; background:#444; margin:5px auto; border-radius:4px;"><div id="vibeBar" style="width:0%; height:100%; background:cyan;"></div></div>
-    <div id="frenzyTimer" style="display:none; color:red;">FRENZY: <span id="seconds">8</span>s</div>
+    Score: <span id="scoreDisplay">0</span> | High: <span id="hiScoreDisplay">0</span>
+    <div id="vibeContainer"><div id="vibeBar"></div></div>
+    <div id="frenzyTimer" style="display:none;">FRENZY: <span id="seconds">8</span>s</div>
 </div>
 
 <canvas id="gameCanvas"></canvas>
@@ -75,18 +75,27 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 // === Assets ===
-const assets = { bg: "IMG_2515.png", idle: "mochkil_idle.png", walk: "mochkil_left.png", eat: "mochkil_eat_left.png", coma: "mochkil_food_coma.png", azul: "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png" };
+const assets = { 
+    bg: "IMG_2515.png", 
+    idle: "mochkil_idle.png", 
+    walk: "mochkil_left.png", 
+    eat: "mochkil_eat_left.png", 
+    coma: "mochkil_food_coma.png", 
+    azul: "https://maximumreality.github.io/WhiskerBytesCatCafe/critic.png" 
+};
 const images = {};
 for(let k in assets) { images[k]=new Image(); images[k].src=assets[k]; }
 
-let gameState = "welcome", gameMode = "", score = 0, snackMeter = 0, vibe = 50, isFrenzy = false;
+// === Game Variables ===
+let gameState = "welcome", gameMode = "", score = 0, vibe = 50, isFrenzy = false;
+let vibeShield = false, shieldTimer = 0, confetti = [];
 let hiScore = localStorage.getItem('moch_hi_26') || 0;
 document.getElementById("hiScoreDisplay").innerText = hiScore;
 
-let mochkil = { x: 50, y: 0, w: 220, h: 220, state: "idle", facingEast: true };
-let azul = { x: 800, y: 150, w: 140, h: 140, speed: 2.5 }; // Azul is higher up
+let mochkil = { x: 100, y: 0, w: 220, h: 220, state: "idle", facingEast: true };
+let azul = { x: 800, y: 120, w: 150, h: 150, speed: 2.8 }; 
 let slices = [], droolDrops = [];
-const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!"];
+const phrases = ["BUSSIN'!", "CHEF ENERGY!", "SLAY!", "W CHEF!", "NO CAP!", "FR FR!"];
 
 function resize() {
     canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -103,39 +112,66 @@ function startGame(mode) {
     requestAnimationFrame(gameLoop);
 }
 
+function spawnConfetti() {
+    for(let i=0; i<50; i++) {
+        confetti.push({ x: Math.random()*canvas.width, y: -10, r: Math.random()*6+2, d: Math.random()*canvas.height, color: `hsl(${Math.random()*360}, 100%, 50%)`, s: Math.random()*3+2 });
+    }
+}
+
 function update() {
     if(gameState !== "playing") return;
 
-    // Azul AI & Drool
-    azul.x -= (isFrenzy ? 8 : 3);
-    if (Math.random() > 0.98) droolDrops.push({ x: azul.x + 50, y: azul.y + 100, s: 6 });
+    // Shield Logic
+    if (vibe >= 100 && !vibeShield) {
+        vibeShield = true; shieldTimer = 300; 
+    }
+    if (vibeShield) {
+        shieldTimer--;
+        if (shieldTimer <= 0) { vibeShield = false; vibe = 50; }
+    }
 
-    if(azul.x < -200) {
-        azul.x = canvas.width + 100;
-        if(score > hiScore) { hiScore = score; localStorage.setItem('moch_hi_26', hiScore); document.getElementById("hiScoreDisplay").innerText = hiScore; }
+    // Azul AI & The Constant Drip
+    azul.x -= (isFrenzy ? 8.5 : 3.2);
+    if (Math.random() > 0.85) droolDrops.push({ x: azul.x + 70, y: azul.y + 110, s: 5 + Math.random()*3 });
+
+    if(azul.x < -250) {
+        azul.x = canvas.width + 150;
+        if(score > hiScore) { 
+            hiScore = score; 
+            localStorage.setItem('moch_hi_26', hiScore); 
+            document.getElementById("hiScoreDisplay").innerText = hiScore;
+            spawnConfetti(); // Beat the daily high score celebration!
+        }
     }
 
     // Drool Physics
     droolDrops.forEach((d, i) => {
         d.y += d.s;
         if (d.y > mochkil.y && d.x > mochkil.x && d.x < mochkil.x + mochkil.w) {
-            vibe = Math.max(0, vibe - 15); droolDrops.splice(i, 1);
+            if(!vibeShield) vibe = Math.max(0, vibe - 10);
+            droolDrops.splice(i, 1);
         }
+        if (d.y > canvas.height) droolDrops.splice(i, 1);
     });
 
-    // Vertical Arc Throw Physics
+    // Vertical Arc Physics
     slices.forEach((s, i) => {
-        s.x += s.dx; s.y += s.dy; s.dy += 0.5; // Gravity
+        s.x += s.dx; s.y += s.dy; s.dy += 0.6; // Gravity
         s.life--;
         if(s.x > azul.x && s.x < azul.x + azul.w && s.y > azul.y && s.y < azul.y + azul.h) {
-            score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 5);
-            azul.x += 160; slices.splice(i, 1);
+            score += isFrenzy ? 100 : 25; vibe = Math.min(100, vibe + 8);
+            azul.x += 180; slices.splice(i, 1);
         }
-        if(s.life <= 0) slices.splice(i, 1);
+        if(s.life <= 0 || s.y > canvas.height) slices.splice(i, 1);
     });
 
+    // Confetti logic
+    confetti.forEach((c, i) => { c.y += c.s; if(c.y > canvas.height) confetti.splice(i,1); });
+
     document.getElementById("scoreDisplay").innerText = score;
-    document.getElementById("vibeBar").style.width = vibe + "%";
+    const bar = document.getElementById("vibeBar");
+    bar.style.width = vibe + "%";
+    bar.style.background = vibeShield ? "gold" : "cyan";
 }
 
 function draw() {
@@ -146,36 +182,59 @@ function draw() {
     ctx.font = "30px serif";
     droolDrops.forEach(d => ctx.fillText("💧", d.x, d.y));
 
-    // Characters
+    // Azul (Drip King)
+    if(isFrenzy) { ctx.shadowBlur = 25; ctx.shadowColor = "red"; }
     ctx.drawImage(images.azul, azul.x, azul.y, azul.w, azul.h);
-    
+    ctx.shadowBlur = 0;
+
+    // Mochkil
     ctx.save();
+    if(vibeShield) { ctx.shadowBlur = 20; ctx.shadowColor = "gold"; }
     let img = images[mochkil.state] || images.idle;
-    if(mochkil.facingEast && mochkil.state !== "idle") {
+    if(mochkil.facingEast && (mochkil.state === "walk" || mochkil.state === "eat")) {
         ctx.translate(mochkil.x + mochkil.w, mochkil.y); ctx.scale(-1, 1);
         ctx.drawImage(img, 0, 0, mochkil.w, mochkil.h);
-    } else { ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h); }
+    } else {
+        ctx.drawImage(img, mochkil.x, mochkil.y, mochkil.w, mochkil.h);
+    }
+    if(vibeShield) { ctx.font = "50px serif"; ctx.fillText("👨‍🍳", mochkil.x + 80, mochkil.y - 10); }
     ctx.restore();
 
-    // Arcing Slices & Bubbles
+    // Slices
     slices.forEach(s => {
         ctx.font = "50px serif"; ctx.fillText("🍰", s.x, s.y);
-        ctx.save(); ctx.globalAlpha = s.life/60; ctx.font = "bold 20px sans-serif";
+        ctx.save(); ctx.globalAlpha = s.life/80; ctx.font = "bold 22px sans-serif";
         ctx.fillStyle = "white"; ctx.strokeStyle = "black"; ctx.lineWidth = 3;
         ctx.strokeText(s.phrase, s.x, s.y - 40); ctx.fillText(s.phrase, s.x, s.y - 40);
         ctx.restore();
     });
+
+    // Confetti
+    confetti.forEach(c => { ctx.fillStyle = c.color; ctx.fillRect(c.x, c.y, c.r, c.r); });
 }
 
-// Controls
-document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.x -= 35; mochkil.facingEast = false; mochkil.state = "walk"; });
-document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; });
-document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
-    e.preventDefault(); 
-    slices.push({ x: mochkil.x + 110, y: mochkil.y + 50, dx: mochkil.facingEast ? 8 : -8, dy: -18, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 80 }); 
+// === Controls ===
+const move = (dir) => {
+    if(mochkil.state === "coma") mochkil.state = "idle";
+    if(dir === "L") { mochkil.x -= 35; mochkil.facingEast = false; mochkil.state = "walk"; }
+    if(dir === "R") { mochkil.x += 35; mochkil.facingEast = true; mochkil.state = "walk"; }
+};
+
+document.getElementById("leftBtn").addEventListener("touchstart", (e) => { e.preventDefault(); move("L"); });
+document.getElementById("rightBtn").addEventListener("touchstart", (e) => { e.preventDefault(); move("R"); });
+document.getElementById("eatBtn").addEventListener("touchstart", (e) => { 
+    e.preventDefault(); if(mochkil.state === "coma") mochkil.state = "idle";
+    mochkil.state = "eat"; vibe = Math.min(100, vibe+2); 
 });
-document.getElementById("eatBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "eat"; snackMeter += 10; vibe = Math.min(100, vibe+2); });
-document.querySelectorAll("button.game-btn").forEach(btn => btn.addEventListener("touchend", () => mochkil.state = "idle"));
+document.getElementById("throwBtn").addEventListener("touchstart", (e) => { 
+    e.preventDefault(); if(mochkil.state === "coma") return;
+    slices.push({ x: mochkil.x + 110, y: mochkil.y + 50, dx: mochkil.facingEast ? 9 : -9, dy: -20, phrase: phrases[Math.floor(Math.random()*phrases.length)], life: 80 }); 
+});
+document.getElementById("comaBtn").addEventListener("touchstart", (e) => { e.preventDefault(); mochkil.state = "coma"; });
+
+document.querySelectorAll("button.game-btn").forEach(btn => {
+    btn.addEventListener("touchend", () => { if(btn.id !== "comaBtn" && mochkil.state !== "coma") mochkil.state = "idle"; });
+});
 
 function gameLoop() { if(gameState === "playing") { update(); draw(); requestAnimationFrame(gameLoop); } }
 </script>
