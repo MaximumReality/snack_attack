@@ -69,7 +69,7 @@ sprites.foodComa.src = "mochkil_food_coma.png";
 
 // === Game Variables ===
 let mochkilX = 350;
-const groundY = 300; // base standing Y
+const groundY = 300; // base standing Y (same as before)
 let mochkilY = groundY;
 let currentSprite = "idle";
 let facingEast = true;
@@ -97,27 +97,29 @@ function drawMochkil() {
     ctx.fillStyle = "#ffe8b3";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Adjust Mochkil Y for food coma vs normal
-    let drawY = mochkilY;
+    // Adjust Mochkil position for food coma vs normal
+    let drawX = mochkilX;
+    let drawY = mochkilY; // keep same vertical placement
+
     if(currentSprite === "foodComa") {
-        // Raise so full sprite fits on screen
-        drawY = groundY - sprites.foodComa.height + 20; // 20px padding
+        drawX = mochkilX - 20; // slide west to fit full body
+        drawY = mochkilY;       // same vertical as idle/standing
     }
 
     // Mochkil sprite
     ctx.save();
     if(facingEast && (currentSprite === "walkLeft" || currentSprite === "eatLeft")){
-        ctx.translate(mochkilX + 100, drawY);
+        ctx.translate(drawX + 100, drawY);
         ctx.scale(-1, 1);
         ctx.drawImage(sprites[currentSprite], 0, 0);
     } else {
-        ctx.drawImage(sprites[currentSprite], mochkilX, drawY);
+        ctx.drawImage(sprites[currentSprite], drawX, drawY);
     }
     ctx.restore();
 
     // Emoji snack in hand
     ctx.font = "40px serif";
-    ctx.fillText(currentSnack, mochkilX + 20, drawY + 20);
+    ctx.fillText(currentSnack, drawX + 20, drawY + 20);
 
     // Draw thrown slices
     slices.forEach(slice => {
@@ -140,7 +142,7 @@ document.getElementById("leftBtn").addEventListener("touchstart", () => {
     mochkilX -= 10;
 });
 document.getElementById("rightBtn").addEventListener("touchstart", () => {
-    currentSprite = "walkLeft"; // flipped
+    currentSprite = "walkLeft"; // flipped sprite
     facingEast = true;
     mochkilX += 10;
 });
